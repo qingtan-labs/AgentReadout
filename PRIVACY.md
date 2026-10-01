@@ -14,6 +14,7 @@ The following values are stored in the app's macOS UserDefaults domain:
 - reset timestamps and window durations;
 - the last successful refresh time;
 - the selected menu-bar display mode.
+- whether automatic update checks are enabled and the time of the last check.
 
 ## Data the app does not collect
 
@@ -21,7 +22,9 @@ Gauge for Codex does not read prompts, conversation content, browser cookies, pa
 
 ## Network behavior
 
-Gauge for Codex does not make its own HTTP requests. The locally installed Codex component may communicate with OpenAI using the account already configured on the Mac in order to return current usage data. That communication is governed by the user's OpenAI agreement and settings.
+Gauge for Codex makes no analytics or telemetry requests. When update checking is enabled, it contacts the public GitHub Releases API for `qingtan-labs/GaugeForCodex` at most once a day. A newer release's Universal ZIP and `SHA256SUMS` are downloaded only for automatic installation. The app compares the published SHA-256 value, expected bundle identifier and version, and the bundle's code-signing integrity before replacement. Automatic checking can be disabled from the menu.
+
+The locally installed Codex component may communicate with OpenAI using the account already configured on the Mac in order to return current usage data. That communication is governed by the user's OpenAI agreement and settings.
 
 ## Manual values and removal
 
@@ -29,4 +32,5 @@ Values entered through the manual fallback stay in the same local UserDefaults d
 
 ```bash
 defaults delete com.qingtanlabs.gaugeforcodex
+defaults delete group.com.qingtanlabs.gaugeforcodex
 ```

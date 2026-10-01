@@ -21,6 +21,7 @@ fi
 
 if [[ "${1:-}" == "--purge" ]]; then
   defaults delete com.qingtanlabs.gaugeforcodex 2>/dev/null || true
+  defaults delete group.com.qingtanlabs.gaugeforcodex 2>/dev/null || true
 fi
 
 echo "Gauge for Codex was moved to the Trash."

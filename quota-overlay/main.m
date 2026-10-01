@@ -1,5 +1,13 @@
 #import <Cocoa/Cocoa.h>
+#import <CommonCrypto/CommonDigest.h>
 #import <math.h>
+#import <unistd.h>
+#ifndef QG_WIDGETKIT_BRIDGE
+#define QG_WIDGETKIT_BRIDGE 1
+#endif
+#if QG_WIDGETKIT_BRIDGE
+#import "GaugeForCodex-Swift.h"
+#endif
 
 static NSString * const QGProductName = @"Gauge for Codex";
 static NSString * const QGPreviousBundleID = @"com.local.codexgauge";
@@ -8,6 +16,11 @@ static NSString * const QGLegacyPrefix = @"CodexQuotaOverlay";
 static NSString * const QGWindowsKey = @"QuotaWindows";
 static NSString * const QGLastSyncKey = @"LastSuccessfulSync";
 static NSString * const QGDisplayModeKey = @"DisplayMode";
+static NSString * const QGAutomaticUpdateChecksKey = @"AutomaticUpdateChecks";
+static NSString * const QGLastUpdateCheckKey = @"LastUpdateCheck";
+static NSString * const QGAppGroupIdentifier = @"group.com.qingtanlabs.gaugeforcodex";
+static NSString * const QGReleaseAPIURL = @"https://api.github.com/repos/qingtan-labs/GaugeForCodex/releases/latest";
+static NSTimeInterval const QGAutomaticUpdateInterval = 24.0 * 60.0 * 60.0;
 
 static NSString *QGL(NSString *key) {
     return [NSBundle.mainBundle localizedStringForKey:key value:key table:nil];
@@ -26,6 +39,32 @@ static NSNumber *QGNumber(id value) {
 static BOOL QGIDEquals(id value, NSInteger expected) {
     NSNumber *number = QGNumber(value);
     return number && number.integerValue == expected;
+}
+
+static NSComparisonResult QGCompareVersions(NSString *left, NSString *right) {
+    NSString *(^normalize)(NSString *) = ^NSString *(NSString *version) {
+        NSString *trimmed = [version stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if ([trimmed hasPrefix:@"v"] || [trimmed hasPrefix:@"V"]) trimmed = [trimmed substringFromIndex:1];
+        return [[trimmed componentsSeparatedByString:@"-"] firstObject] ?: @"0";
+    };
+    NSArray<NSString *> *leftParts = [normalize(left ?: @"0") componentsSeparatedByString:@"."];
+    NSArray<NSString *> *rightParts = [normalize(right ?: @"0") componentsSeparatedByString:@"."];
+    NSUInteger count = MAX(leftParts.count, rightParts.count);
+    for (NSUInteger index = 0; index < count; index++) {
+        NSInteger leftValue = index < leftParts.count ? leftParts[index].integerValue : 0;
+        NSInteger rightValue = index < rightParts.count ? rightParts[index].integerValue : 0;
+        if (leftValue < rightValue) return NSOrderedAscending;
+        if (leftValue > rightValue) return NSOrderedDescending;
+    }
+    return NSOrderedSame;
+}
+
+static NSString *QGSHA256(NSData *data) {
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
+    NSMutableString *hex = [NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
+    for (NSInteger index = 0; index < CC_SHA256_DIGEST_LENGTH; index++) [hex appendFormat:@"%02x", digest[index]];
+    return hex;
 }
 
 static NSDictionary *QGNormalizedWindow(NSDictionary *dictionary, NSString *kind) {
@@ -175,10 +214,23 @@ static BOOL QGRunSelfTests(void) {
         fprintf(stdout, "%s %s\n", passed ? "PASS" : "FAIL", [test[@"name"] UTF8String]);
         if (!passed) failures++;
     }
+    NSArray<NSDictionary *> *versionCases = @[
+        @{ @"left": @"1.0.1", @"right": @"1.0.0", @"expected": @(NSOrderedDescending) },
+        @{ @"left": @"v1.0.1", @"right": @"1.0.1", @"expected": @(NSOrderedSame) },
+        @{ @"left": @"1.0", @"right": @"1.0.1", @"expected": @(NSOrderedAscending) }
+    ];
+    for (NSDictionary *test in versionCases) {
+        NSComparisonResult actual = QGCompareVersions(test[@"left"], test[@"right"]);
+        BOOL passed = actual == [test[@"expected"] integerValue];
+        fprintf(stdout, "%s version %s vs %s\n", passed ? "PASS" : "FAIL",
+                [test[@"left"] UTF8String], [test[@"right"] UTF8String]);
+        if (!passed) failures++;
+    }
     BOOL localizationPassed = ![QGL(@"menu.refresh") isEqualToString:@"menu.refresh"];
     fprintf(stdout, "%s localization resources\n", localizationPassed ? "PASS" : "FAIL");
     if (!localizationPassed) failures++;
-    fprintf(stdout, "%lu tests, %lu failures\n", (unsigned long)(cases.count + 1), (unsigned long)failures);
+    fprintf(stdout, "%lu tests, %lu failures\n",
+            (unsigned long)(cases.count + versionCases.count + 1), (unsigned long)failures);
     return failures == 0;
 }
 
@@ -261,25 +313,42 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 @property NSMenuItem *displayMenuItem;
 @property NSMenuItem *fullModeMenuItem;
 @property NSMenuItem *compactModeMenuItem;
+@property NSMenuItem *addWidgetMenuItem;
+@property NSMenuItem *checkUpdateMenuItem;
+@property NSMenuItem *automaticUpdateMenuItem;
 @property NSMenuItem *aboutMenuItem;
 @property NSMenuItem *quitMenuItem;
 @property NSTimer *syncTimer;
 @property NSTimer *displayTimer;
+@property NSTimer *updateTimer;
 @property NSArray<NSDictionary *> *quotaWindows;
 @property NSDictionary *selectedWindow;
 @property QGSyncState syncState;
 @property QGDisplayMode displayMode;
 @property BOOL syncInProgress;
+@property BOOL updateCheckInProgress;
+@property BOOL updateInstallInProgress;
 @property NSDate *lastSuccessfulSync;
 @property NSString *syncDetail;
 @property NSString *lastError;
+@property NSString *availableUpdateVersion;
+@property NSURL *availableUpdateURL;
+- (void)publishWidgetSnapshot;
+- (void)performAutomaticUpdateCheckIfNeeded;
+- (void)checkForUpdates:(id)sender;
+- (void)toggleAutomaticUpdateChecks:(id)sender;
+- (void)showWidgetHelp:(id)sender;
 @end
 
 @implementation QGAppDelegate
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     (void)notification;
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    if ([NSUserDefaults.standardUserDefaults objectForKey:QGAutomaticUpdateChecksKey] == nil) {
+        [NSUserDefaults.standardUserDefaults setBool:YES forKey:QGAutomaticUpdateChecksKey];
+    }
     [self restoreCachedQuota];
+    [self publishWidgetSnapshot];
 
     _statusItem = [NSStatusBar.systemStatusBar statusItemWithLength:56.0];
     _statusItem.autosaveName = @"CodexGaugeStatusItem";
@@ -312,15 +381,35 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     }];
     _displayTimer.tolerance = 3.0;
     [NSRunLoop.mainRunLoop addTimer:_displayTimer forMode:NSRunLoopCommonModes];
+    _updateTimer = [NSTimer timerWithTimeInterval:6.0 * 60.0 * 60.0 repeats:YES block:^(NSTimer *timer) {
+        (void)timer;
+        [weakSelf performAutomaticUpdateCheckIfNeeded];
+    }];
+    _updateTimer.tolerance = 15.0 * 60.0;
+    [NSRunLoop.mainRunLoop addTimer:_updateTimer forMode:NSRunLoopCommonModes];
     [self refreshQuota:nil];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 12 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        [weakSelf performAutomaticUpdateCheckIfNeeded];
+    });
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
     (void)notification;
     [_syncTimer invalidate];
     [_displayTimer invalidate];
+    [_updateTimer invalidate];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:self];
+}
+
+- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls {
+    (void)application;
+    for (NSURL *url in urls) {
+        if ([url.scheme.lowercaseString isEqualToString:@"gaugeforcodex"] &&
+            [url.host.lowercaseString isEqualToString:@"refresh"]) {
+            [self refreshQuota:nil];
+        }
+    }
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { (void)sender; return NO; }
@@ -358,6 +447,13 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     _manualMenuItem = [menu addItemWithTitle:@"" action:@selector(editQuota:) keyEquivalent:@""];
     _manualMenuItem.target = self;
     [menu addItem:NSMenuItem.separatorItem];
+    _addWidgetMenuItem = [menu addItemWithTitle:@"" action:@selector(showWidgetHelp:) keyEquivalent:@""];
+    _addWidgetMenuItem.target = self;
+    _checkUpdateMenuItem = [menu addItemWithTitle:@"" action:@selector(checkForUpdates:) keyEquivalent:@""];
+    _checkUpdateMenuItem.target = self;
+    _automaticUpdateMenuItem = [menu addItemWithTitle:@"" action:@selector(toggleAutomaticUpdateChecks:) keyEquivalent:@""];
+    _automaticUpdateMenuItem.target = self;
+    [menu addItem:NSMenuItem.separatorItem];
     _aboutMenuItem = [menu addItemWithTitle:@"" action:@selector(showAbout:) keyEquivalent:@""];
     _aboutMenuItem.target = self;
     _quitMenuItem = [menu addItemWithTitle:@"" action:@selector(terminate:) keyEquivalent:@"q"];
@@ -380,6 +476,7 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 - (void)workspaceDidWake:(NSNotification *)notification {
     (void)notification;
     [self refreshQuota:nil];
+    [self performAutomaticUpdateCheckIfNeeded];
 }
 
 - (void)displayTimerFired {
@@ -497,6 +594,21 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     _compactModeMenuItem.title = QGL(@"menu.displayCompact");
     _fullModeMenuItem.state = _displayMode == QGDisplayModeFull ? NSControlStateValueOn : NSControlStateValueOff;
     _compactModeMenuItem.state = _displayMode == QGDisplayModeCompact ? NSControlStateValueOn : NSControlStateValueOff;
+    _addWidgetMenuItem.title = QGL(@"menu.addWidget");
+    NSString *widgetPath = [NSBundle.mainBundle.builtInPlugInsPath stringByAppendingPathComponent:@"GaugeForCodexWidget.appex"];
+    BOOL widgetAvailable = NSProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 14 &&
+        [NSFileManager.defaultManager fileExistsAtPath:widgetPath];
+    _addWidgetMenuItem.hidden = !widgetAvailable;
+    _checkUpdateMenuItem.title = _updateInstallInProgress ? QGL(@"update.installing") :
+        (_updateCheckInProgress ? QGL(@"update.checking") :
+         (_availableUpdateVersion.length
+              ? [NSString stringWithFormat:QGL(@"update.availableMenu"), _availableUpdateVersion]
+              : QGL(@"menu.checkUpdates")));
+    _checkUpdateMenuItem.enabled = !_updateCheckInProgress && !_updateInstallInProgress;
+    _automaticUpdateMenuItem.title = QGL(@"menu.automaticUpdates");
+    _automaticUpdateMenuItem.state = [NSUserDefaults.standardUserDefaults boolForKey:QGAutomaticUpdateChecksKey]
+        ? NSControlStateValueOn : NSControlStateValueOff;
+    _automaticUpdateMenuItem.enabled = !_updateInstallInProgress;
     _aboutMenuItem.title = [NSString stringWithFormat:QGL(@"menu.about"), QGProductName];
     _quitMenuItem.title = [NSString stringWithFormat:QGL(@"menu.quit"), QGProductName];
 
@@ -547,6 +659,10 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     [self migrateLegacyDefaultsIfNeeded];
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     NSArray *stored = [defaults arrayForKey:QGWindowsKey];
+    if (!stored.count) {
+        NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:QGAppGroupIdentifier];
+        stored = [shared arrayForKey:QGWindowsKey];
+    }
     NSMutableArray<NSDictionary *> *valid = [NSMutableArray array];
     for (id item in stored) {
         if (![item isKindOfClass:NSDictionary.class]) continue;
@@ -573,6 +689,17 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 
 - (void)saveQuotaWindows:(NSArray<NSDictionary *> *)windows {
     [NSUserDefaults.standardUserDefaults setObject:windows forKey:QGWindowsKey];
+    [self publishWidgetSnapshot];
+}
+
+- (void)publishWidgetSnapshot {
+    NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:QGAppGroupIdentifier];
+    if (_quotaWindows.count) [shared setObject:_quotaWindows forKey:QGWindowsKey];
+    if (_lastSuccessfulSync) [shared setDouble:_lastSuccessfulSync.timeIntervalSince1970 forKey:QGLastSyncKey];
+    [shared synchronize];
+#if QG_WIDGETKIT_BRIDGE
+    [QGWidgetBridge reloadAllTimelines];
+#endif
 }
 
 - (NSArray<NSString *> *)codexBinaryCandidates {
@@ -743,6 +870,7 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
         _lastError = nil;
         [self saveQuotaWindows:_quotaWindows];
         [NSUserDefaults.standardUserDefaults setDouble:_lastSuccessfulSync.timeIntervalSince1970 forKey:QGLastSyncKey];
+        [self publishWidgetSnapshot];
     } else {
         _syncState = QGSyncStateFailed;
         _lastError = errorMessage ?: QGL(@"sync.failed");
@@ -823,8 +951,311 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
         _lastSuccessfulSync = NSDate.date;
         [self saveQuotaWindows:_quotaWindows];
         [NSUserDefaults.standardUserDefaults setDouble:_lastSuccessfulSync.timeIntervalSince1970 forKey:QGLastSyncKey];
+        [self publishWidgetSnapshot];
         [self updateStatusItem];
         break;
+    }
+}
+
+- (void)showWidgetHelp:(id)sender {
+    (void)sender;
+    NSAlert *alert = [NSAlert new];
+    alert.messageText = QGL(@"widget.helpTitle");
+    alert.informativeText = QGL(@"widget.helpBody");
+    [alert addButtonWithTitle:QGL(@"widget.openSettings")];
+    [alert addButtonWithTitle:QGL(@"common.cancel")];
+    [NSApp activateIgnoringOtherApps:YES];
+    if ([alert runModal] == NSAlertFirstButtonReturn) {
+        NSURL *settingsURL = [NSURL URLWithString:@"x-apple.systempreferences:com.apple.Desktop-Settings.extension"];
+        if (settingsURL) [NSWorkspace.sharedWorkspace openURL:settingsURL];
+    }
+}
+
+- (NSString *)currentVersion {
+    return [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"0";
+}
+
+- (void)toggleAutomaticUpdateChecks:(id)sender {
+    (void)sender;
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    BOOL enabled = ![defaults boolForKey:QGAutomaticUpdateChecksKey];
+    [defaults setBool:enabled forKey:QGAutomaticUpdateChecksKey];
+    [self updateStatusItem];
+    if (enabled) [self performAutomaticUpdateCheckIfNeeded];
+}
+
+- (void)performAutomaticUpdateCheckIfNeeded {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    if (![defaults boolForKey:QGAutomaticUpdateChecksKey] || _updateCheckInProgress || _updateInstallInProgress) return;
+    NSTimeInterval lastCheck = [defaults doubleForKey:QGLastUpdateCheckKey];
+    if (lastCheck > 0 && NSDate.date.timeIntervalSince1970 - lastCheck < QGAutomaticUpdateInterval) return;
+    [self performUpdateCheckManual:NO];
+}
+
+- (void)checkForUpdates:(id)sender {
+    (void)sender;
+    if (_updateCheckInProgress || _updateInstallInProgress) return;
+    [self performUpdateCheckManual:YES];
+}
+
+- (NSURLRequest *)releaseRequestForURL:(NSURL *)url {
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.timeoutInterval = 30.0;
+    [request setValue:@"application/vnd.github+json" forHTTPHeaderField:@"Accept"];
+    [request setValue:@"2022-11-28" forHTTPHeaderField:@"X-GitHub-Api-Version"];
+    [request setValue:[NSString stringWithFormat:@"Gauge-for-Codex/%@", self.currentVersion]
+   forHTTPHeaderField:@"User-Agent"];
+    return request;
+}
+
+- (void)performUpdateCheckManual:(BOOL)manual {
+    NSURL *url = [NSURL URLWithString:QGReleaseAPIURL];
+    if (!url) return;
+    _updateCheckInProgress = YES;
+    [self updateStatusItem];
+    __weak QGAppDelegate *weakSelf = self;
+    NSURLSessionDataTask *task = [NSURLSession.sharedSession dataTaskWithRequest:[self releaseRequestForURL:url]
+                                                              completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class] ? (id)response : nil;
+        NSDictionary *release = nil;
+        if (!error && http.statusCode == 200 && data.length) {
+            id object = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+            if ([object isKindOfClass:NSDictionary.class]) release = object;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            QGAppDelegate *self = weakSelf;
+            if (!self) return;
+            self.updateCheckInProgress = NO;
+            if (!release) {
+                [self updateStatusItem];
+                if (manual) [self showUpdateFailure:error.localizedDescription ?: QGL(@"update.checkFailed")
+                                         releaseURL:nil];
+                return;
+            }
+            [NSUserDefaults.standardUserDefaults setDouble:NSDate.date.timeIntervalSince1970
+                                                    forKey:QGLastUpdateCheckKey];
+            NSString *version = [release[@"tag_name"] isKindOfClass:NSString.class] ? release[@"tag_name"] : @"";
+            if ([version hasPrefix:@"v"] || [version hasPrefix:@"V"]) version = [version substringFromIndex:1];
+            NSString *page = [release[@"html_url"] isKindOfClass:NSString.class] ? release[@"html_url"] : @"";
+            self.availableUpdateURL = page.length ? [NSURL URLWithString:page] : nil;
+            if (!version.length || QGCompareVersions(version, self.currentVersion) != NSOrderedDescending) {
+                self.availableUpdateVersion = nil;
+                [self updateStatusItem];
+                if (manual) {
+                    NSAlert *alert = [NSAlert new];
+                    alert.messageText = QGL(@"update.upToDateTitle");
+                    alert.informativeText = [NSString stringWithFormat:QGL(@"update.upToDateBody"), self.currentVersion];
+                    [alert addButtonWithTitle:QGL(@"common.ok")];
+                    [NSApp activateIgnoringOtherApps:YES];
+                    [alert runModal];
+                }
+                return;
+            }
+
+            self.availableUpdateVersion = version;
+            [self updateStatusItem];
+            if (manual) {
+                NSAlert *alert = [NSAlert new];
+                alert.messageText = [NSString stringWithFormat:QGL(@"update.availableTitle"), version];
+                alert.informativeText = QGL(@"update.availableBody");
+                [alert addButtonWithTitle:QGL(@"update.install")];
+                [alert addButtonWithTitle:QGL(@"update.later")];
+                [NSApp activateIgnoringOtherApps:YES];
+                if ([alert runModal] != NSAlertFirstButtonReturn) return;
+            }
+            [self downloadAndInstallRelease:release manual:manual];
+        });
+    }];
+    [task resume];
+}
+
+- (void)fetchDataAtURL:(NSURL *)url completion:(void (^)(NSData *, NSError *))completion {
+    NSMutableURLRequest *request = [[self releaseRequestForURL:url] mutableCopy];
+    [request setValue:@"application/octet-stream" forHTTPHeaderField:@"Accept"];
+    NSURLSessionDataTask *task = [NSURLSession.sharedSession dataTaskWithRequest:request
+                                                              completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class] ? (id)response : nil;
+        if (!error && (http.statusCode < 200 || http.statusCode >= 300)) {
+            error = [NSError errorWithDomain:@"GaugeForCodexUpdate" code:http.statusCode
+                                    userInfo:@{NSLocalizedDescriptionKey: QGL(@"update.downloadFailed")}];
+        }
+        completion(data, error);
+    }];
+    [task resume];
+}
+
+- (NSString *)expectedSHAForFileName:(NSString *)fileName checksumData:(NSData *)data {
+    NSString *text = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    NSCharacterSet *hexSet = [NSCharacterSet characterSetWithCharactersInString:@"0123456789abcdefABCDEF"];
+    for (NSString *line in [text componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]) {
+        if ([line rangeOfString:fileName options:NSCaseInsensitiveSearch].location == NSNotFound) continue;
+        NSArray<NSString *> *parts = [line componentsSeparatedByCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
+        for (NSString *part in parts) {
+            if (part.length == 64 && [[part stringByTrimmingCharactersInSet:hexSet] length] == 0) {
+                return part.lowercaseString;
+            }
+        }
+    }
+    return nil;
+}
+
+- (BOOL)runExecutable:(NSString *)executable arguments:(NSArray<NSString *> *)arguments error:(NSString **)message {
+    NSTask *task = [NSTask new];
+    task.executableURL = [NSURL fileURLWithPath:executable];
+    task.arguments = arguments;
+    NSPipe *errorPipe = [NSPipe pipe];
+    task.standardOutput = NSFileHandle.fileHandleWithNullDevice;
+    task.standardError = errorPipe;
+    NSError *launchError = nil;
+    if (![task launchAndReturnError:&launchError]) {
+        if (message) *message = launchError.localizedDescription;
+        return NO;
+    }
+    [task waitUntilExit];
+    if (task.terminationStatus == 0) return YES;
+    NSData *data = [errorPipe.fileHandleForReading readDataToEndOfFile];
+    NSString *detail = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    if (message) *message = detail.length ? detail : QGL(@"update.validationFailed");
+    return NO;
+}
+
+- (NSString *)appBundleInsideDirectory:(NSString *)directory {
+    NSDirectoryEnumerator<NSString *> *items = [NSFileManager.defaultManager enumeratorAtPath:directory];
+    for (NSString *relativePath in items) {
+        if (![relativePath.pathExtension.lowercaseString isEqualToString:@"app"]) continue;
+        NSString *path = [directory stringByAppendingPathComponent:relativePath];
+        NSBundle *bundle = [NSBundle bundleWithPath:path];
+        if ([bundle.bundleIdentifier isEqualToString:NSBundle.mainBundle.bundleIdentifier]) return path;
+        [items skipDescendants];
+    }
+    return nil;
+}
+
+- (BOOL)validateUpdateAppAtPath:(NSString *)path version:(NSString *)version error:(NSString **)message {
+    NSBundle *bundle = [NSBundle bundleWithPath:path];
+    NSString *bundleVersion = [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    if (!bundle || ![bundle.bundleIdentifier isEqualToString:NSBundle.mainBundle.bundleIdentifier] ||
+        ![bundleVersion isEqualToString:version]) {
+        if (message) *message = QGL(@"update.identityFailed");
+        return NO;
+    }
+    return [self runExecutable:@"/usr/bin/codesign" arguments:@[@"--verify", @"--deep", @"--strict", path] error:message];
+}
+
+- (void)downloadAndInstallRelease:(NSDictionary *)release manual:(BOOL)manual {
+    NSArray *assets = [release[@"assets"] isKindOfClass:NSArray.class] ? release[@"assets"] : @[];
+    NSDictionary *zipAsset = nil;
+    NSDictionary *checksumAsset = nil;
+    for (NSDictionary *asset in assets) {
+        if (![asset isKindOfClass:NSDictionary.class]) continue;
+        NSString *name = [asset[@"name"] isKindOfClass:NSString.class] ? asset[@"name"] : @"";
+        if ([name caseInsensitiveCompare:@"SHA256SUMS"] == NSOrderedSame) checksumAsset = asset;
+        if ([name.lowercaseString hasSuffix:@"-universal.zip"]) zipAsset = asset;
+        else if (!zipAsset && [name.lowercaseString hasSuffix:@".zip"]) zipAsset = asset;
+    }
+    NSString *zipName = [zipAsset[@"name"] isKindOfClass:NSString.class] ? zipAsset[@"name"] : @"";
+    NSURL *zipURL = [NSURL URLWithString:[zipAsset[@"browser_download_url"] isKindOfClass:NSString.class]
+                                             ? zipAsset[@"browser_download_url"] : @""];
+    NSURL *checksumURL = [NSURL URLWithString:[checksumAsset[@"browser_download_url"] isKindOfClass:NSString.class]
+                                                  ? checksumAsset[@"browser_download_url"] : @""];
+    if (!zipURL || !checksumURL || !zipName.length) {
+        if (manual) [self showUpdateFailure:QGL(@"update.assetsMissing") releaseURL:_availableUpdateURL];
+        return;
+    }
+
+    _updateInstallInProgress = YES;
+    [self updateStatusItem];
+    __weak QGAppDelegate *weakSelf = self;
+    [self fetchDataAtURL:checksumURL completion:^(NSData *checksumData, NSError *checksumError) {
+        if (checksumError || !checksumData.length) {
+            dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf finishUpdateWithError:checksumError.localizedDescription manual:manual]; });
+            return;
+        }
+        [weakSelf fetchDataAtURL:zipURL completion:^(NSData *zipData, NSError *zipError) {
+            if (zipError || !zipData.length) {
+                dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf finishUpdateWithError:zipError.localizedDescription manual:manual]; });
+                return;
+            }
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                QGAppDelegate *self = weakSelf;
+                if (!self) return;
+                NSString *expected = [self expectedSHAForFileName:zipName checksumData:checksumData];
+                if (!expected.length || ![expected isEqualToString:QGSHA256(zipData)]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{ [self finishUpdateWithError:QGL(@"update.checksumFailed") manual:manual]; });
+                    return;
+                }
+                NSString *temporary = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                    [@"GaugeForCodexUpdate-" stringByAppendingString:NSUUID.UUID.UUIDString]];
+                NSError *fileError = nil;
+                [NSFileManager.defaultManager createDirectoryAtPath:temporary withIntermediateDirectories:YES attributes:nil error:&fileError];
+                NSString *zipPath = [temporary stringByAppendingPathComponent:zipName];
+                if (fileError || ![zipData writeToFile:zipPath options:NSDataWritingAtomic error:&fileError]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{ [self finishUpdateWithError:fileError.localizedDescription manual:manual]; });
+                    return;
+                }
+                NSString *commandError = nil;
+                if (![self runExecutable:@"/usr/bin/ditto" arguments:@[@"-x", @"-k", zipPath, temporary] error:&commandError]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{ [self finishUpdateWithError:commandError manual:manual]; });
+                    return;
+                }
+                NSString *replacement = [self appBundleInsideDirectory:temporary];
+                if (!replacement || ![self validateUpdateAppAtPath:replacement version:self.availableUpdateVersion error:&commandError]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{ [self finishUpdateWithError:commandError ?: QGL(@"update.validationFailed") manual:manual]; });
+                    return;
+                }
+                NSString *target = NSBundle.mainBundle.bundlePath;
+                if (![NSFileManager.defaultManager isWritableFileAtPath:target.stringByDeletingLastPathComponent]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{ [self finishUpdateWithError:QGL(@"update.readOnlyInstall") manual:YES]; });
+                    return;
+                }
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self launchUpdaterWithReplacement:replacement temporaryDirectory:temporary];
+                });
+            });
+        }];
+    }];
+}
+
+- (void)launchUpdaterWithReplacement:(NSString *)replacement temporaryDirectory:(NSString *)temporary {
+    NSString *helper = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Contents/Helpers/GaugeForCodexUpdater"];
+    if (![NSFileManager.defaultManager isExecutableFileAtPath:helper]) {
+        [self finishUpdateWithError:QGL(@"update.helperMissing") manual:YES];
+        return;
+    }
+    NSTask *task = [NSTask new];
+    task.executableURL = [NSURL fileURLWithPath:helper];
+    task.arguments = @[[NSString stringWithFormat:@"%d", getpid()], NSBundle.mainBundle.bundlePath,
+                       replacement, _availableUpdateVersion ?: @"", temporary];
+    task.standardOutput = NSFileHandle.fileHandleWithNullDevice;
+    task.standardError = NSFileHandle.fileHandleWithNullDevice;
+    NSError *error = nil;
+    if (![task launchAndReturnError:&error]) {
+        [self finishUpdateWithError:error.localizedDescription manual:YES];
+        return;
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [NSApp terminate:nil];
+    });
+}
+
+- (void)finishUpdateWithError:(NSString *)message manual:(BOOL)manual {
+    _updateInstallInProgress = NO;
+    [self updateStatusItem];
+    if (manual) [self showUpdateFailure:message.length ? message : QGL(@"update.installFailed")
+                             releaseURL:_availableUpdateURL];
+}
+
+- (void)showUpdateFailure:(NSString *)message releaseURL:(NSURL *)releaseURL {
+    NSAlert *alert = [NSAlert new];
+    alert.messageText = QGL(@"update.failedTitle");
+    alert.informativeText = message.length ? message : QGL(@"update.installFailed");
+    if (releaseURL) [alert addButtonWithTitle:QGL(@"update.openDownload")];
+    [alert addButtonWithTitle:QGL(@"common.ok")];
+    [NSApp activateIgnoringOtherApps:YES];
+    if (releaseURL && [alert runModal] == NSAlertFirstButtonReturn) {
+        [NSWorkspace.sharedWorkspace openURL:releaseURL];
+    } else if (!releaseURL) {
+        [alert runModal];
     }
 }
 

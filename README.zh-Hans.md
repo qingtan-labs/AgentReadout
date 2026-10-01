@@ -28,6 +28,8 @@
 - 启动时、每 60 秒、Mac 唤醒后和额度重置后自动同步。
 - 临时同步失败时保留最后一次成功值，并明确标记过期数据。
 - 提供“仅百分比”紧凑模式和手动填写后备方案。
+- macOS 14 及以上支持原生小号、中号桌面组件；系统会随桌面焦点自动切换彩色与弱化毛玻璃效果。
+- 默认每天从 GitHub Releases 检查一次更新，可关闭也可手动检查；校验通过后可自动替换可写位置中的应用并重新启动。
 - 原生支持 Apple Silicon 与 Intel Mac，不使用 Electron。
 - 不包含分析、广告、账号系统或遥测。
 
@@ -35,7 +37,7 @@
 
 - macOS 12 Monterey 或更高版本。
 - 已安装并登录 Codex 或 ChatGPT 桌面应用；也支持标准路径下已登录的 Codex CLI。
-- 只有从源码构建时才需要 Xcode Command Line Tools。
+- 从源码构建桌面组件需要 Xcode 15 或更高版本；旧版 Command Line Tools 仍可只构建菜单栏应用。
 
 ## 下载
 
@@ -79,14 +81,15 @@ flowchart LR
     B -->|app-server 标准输入输出| C[只读额度请求]
     C --> D[剩余百分比与重置时间]
     D --> E[macOS 菜单栏]
-    D --> F[本机 UserDefaults 缓存]
+    D --> F[本机 App Group 缓存]
+    F --> G[小号与中号 WidgetKit 组件]
 ```
 
 Gauge for Codex 会短暂启动 `codex app-server --stdio`，请求 `account/rateLimits/read`。它不会执行提示词，也不会读取聊天内容。这是本机集成接口，并非公开稳定 API；未来 Codex 更新后可能需要适配。
 
 ## 隐私
 
-Gauge for Codex 不运营外部服务，也不发送遥测。程序只在 macOS UserDefaults 中保存归一化后的额度百分比、重置时间戳、显示偏好和最后成功同步时间。Codex 组件可能使用你已在本机配置的账号与 OpenAI 通信。详见 [PRIVACY.md](PRIVACY.md)。
+Gauge for Codex 不运营外部服务，也不发送遥测。程序只在本机 UserDefaults/App Group 中保存归一化后的额度百分比、重置时间戳、显示偏好和最后成功同步时间。启用更新检查后，它只会访问本项目公开的 GitHub Releases API；仅在发现新版本时下载发布文件。Codex 组件可能使用你已在本机配置的账号与 OpenAI 通信。详见 [PRIVACY.md](PRIVACY.md)。
 
 ## 项目文档
 

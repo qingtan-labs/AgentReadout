@@ -7,39 +7,29 @@
     <key>CFBundleDisplayName</key>
     <string>Gauge for Codex</string>
     <key>CFBundleExecutable</key>
-    <string>GaugeForCodex</string>
+    <string>GaugeForCodexWidget</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.qingtanlabs.gaugeforcodex</string>
+    <string>com.qingtanlabs.gaugeforcodex.widget</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Gauge for Codex</string>
+    <string>Gauge for Codex Widget</string>
     <key>CFBundlePackageType</key>
-    <string>APPL</string>
+    <string>XPC!</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0.1</string>
     <key>CFBundleVersion</key>
     <string>2</string>
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleURLName</key>
-            <string>com.qingtanlabs.gaugeforcodex</string>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>gaugeforcodex</string>
-            </array>
-        </dict>
-    </array>
     <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
-    <key>LSUIElement</key>
-    <true/>
+    <string>14.0</string>
+    <key>NSExtension</key>
+    <dict>
+        <key>NSExtensionPointIdentifier</key>
+        <string>com.apple.widgetkit-extension</string>
+    </dict>
     <key>NSHighResolutionCapable</key>
     <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026 qingtan-labs. MIT License.</string>
 </dict>
 </plist>

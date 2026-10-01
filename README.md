@@ -28,6 +28,8 @@ The original icon combines a geometric **C** for Codex compatibility, a **`>_`**
 - Refreshes at launch, every 60 seconds, when the Mac wakes, and after a reset.
 - Preserves the last successful value during transient failures and marks stale data.
 - Includes a percentage-only compact mode and a manual fallback.
+- Adds native small and medium desktop widgets on macOS 14 or later; the system automatically shifts their background between full-color and subdued desktop appearances.
+- Checks GitHub Releases once a day by default, with an off switch and a manual check. Verified updates can download, replace the writable app copy, and relaunch automatically.
 - Runs natively on Apple silicon and Intel Macs without Electron.
 - Contains no analytics, advertising, account system, or telemetry.
 
@@ -35,7 +37,7 @@ The original icon combines a geometric **C** for Codex compatibility, a **`>_`**
 
 - macOS 12 Monterey or later.
 - Codex or the ChatGPT desktop app installed and signed in, or a signed-in Codex CLI available in a standard location.
-- Xcode Command Line Tools only when building from source.
+- Xcode 15 or later when building the desktop widget from source. Older Command Line Tools can still build the menu-bar app without the widget.
 
 ## Download
 
@@ -79,14 +81,15 @@ flowchart LR
     B -->|app-server over stdio| C[Read-only rate-limit request]
     C --> D[Remaining percentage and reset time]
     D --> E[macOS menu bar]
-    D --> F[Local UserDefaults cache]
+    D --> F[Local App Group cache]
+    F --> G[Small and medium WidgetKit widgets]
 ```
 
 Gauge for Codex starts the `codex app-server --stdio` executable and requests `account/rateLimits/read`. It does not execute prompts or read conversation content. This is a local integration boundary rather than a documented stable public API, so a future Codex update may require an adapter update.
 
 ## Privacy
 
-Gauge for Codex does not operate an external service and does not send telemetry. It stores only normalized usage percentages, reset timestamps, display preferences, and the last successful refresh time in macOS UserDefaults. The Codex component may communicate with OpenAI using the account already configured on your Mac. See [PRIVACY.md](PRIVACY.md).
+Gauge for Codex does not operate an external service and does not send telemetry. It stores only normalized usage percentages, reset timestamps, display preferences, and the last successful refresh time in local UserDefaults/App Group storage. When update checks are enabled, it contacts only this project's public GitHub Releases API and downloads a release only when a newer version exists. The Codex component may communicate with OpenAI using the account already configured on your Mac. See [PRIVACY.md](PRIVACY.md).
 
 ## Security and support
 

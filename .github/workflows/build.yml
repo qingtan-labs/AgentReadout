@@ -10,7 +10,7 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - name: Build and test menu-bar app
+      - name: Build and test menu-bar app and widgets
         run: ./quota-overlay/build.sh
       - name: Build and test optional launcher
         run: ./launcher/build.sh
