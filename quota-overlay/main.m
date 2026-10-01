@@ -463,13 +463,13 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
                                                                   xRadius:24 yRadius:24];
     NSColor *background = _desktopFocused
         ? [NSColor.windowBackgroundColor colorWithAlphaComponent:0.97]
-        : [NSColor colorWithSRGBRed:0.30 green:0.23 blue:0.77 alpha:0.82];
+        : [NSColor colorWithSRGBRed:0.48 green:0.42 blue:0.89 alpha:0.82];
     [background setFill];
     [backgroundPath fill];
     backgroundPath.lineWidth = 1.0;
     NSColor *border = _desktopFocused
         ? [NSColor.labelColor colorWithAlphaComponent:0.08]
-        : [NSColor.whiteColor colorWithAlphaComponent:0.28];
+        : [NSColor.whiteColor colorWithAlphaComponent:0.16];
     [border setStroke];
     [backgroundPath stroke];
     [self drawHeaderInWidth:NSWidth(bounds)];
@@ -1249,7 +1249,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     _desktopWidgetPanel.delegate = self;
     _desktopWidgetPanel.opaque = NO;
     _desktopWidgetPanel.backgroundColor = NSColor.clearColor;
-    _desktopWidgetPanel.hasShadow = YES;
+    _desktopWidgetPanel.hasShadow = NO;
     _desktopWidgetPanel.movableByWindowBackground = YES;
     _desktopWidgetPanel.hidesOnDeactivate = NO;
     _desktopWidgetPanel.releasedWhenClosed = NO;

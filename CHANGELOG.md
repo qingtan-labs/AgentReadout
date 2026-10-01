@@ -6,6 +6,7 @@ All notable changes are documented here.
 
 - Added a draggable desktop widget with small and medium layouts, saved position and visibility, and system-aware backgrounds.
 - Refined the widget to macOS-sized proportions with a wallpaper-tinted appearance, the compact Windows brand mark, and exact reset times for each quota window.
+- Lightened the tinted widget background to better match nearby macOS widgets and softened its border.
 - Added manual update checks and daily automatic checks with an off switch.
 - Added verified ZIP updates with SHA-256, bundle identity, version, code-signing checks, and rollback protection.
 - Localized the widget and update controls in English, Simplified Chinese, Japanese, and Spanish.
