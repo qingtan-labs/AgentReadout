@@ -1,9 +1,0 @@
-"widget.name" = "Codex 使用量";
-"widget.description" = "Codex の残り使用量とリセット時刻を表示します。";
-"widget.title" = "Codex 使用量";
-"widget.hours" = "%d 時間";
-"widget.days" = "%d 日";
-"widget.window" = "使用量ウィンドウ";
-"widget.openApp" = "Gauge for Codex を開いて使用量を取得します。";
-"widget.nextReset" = "最も厳しい枠のリセット";
-"widget.resetUnknown" = "リセット時刻不明";

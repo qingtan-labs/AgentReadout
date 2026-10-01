@@ -42,7 +42,6 @@
 "accessibility.menu" = "%@ usage menu";
 "accessibility.value" = "%@ remaining. %@. %@.";
 "about.body" = "%@ is an independent macOS menu bar utility. It reads usage data from the locally installed Codex app, keeps the last successful value when a refresh fails, and sends no telemetry.\n\nThis utility is not affiliated with or endorsed by OpenAI. The local data interface may change in future Codex releases.";
-"menu.addWidget" = "Add Desktop Widget…";
 "menu.checkUpdates" = "Check for Updates…";
 "menu.automaticUpdates" = "Automatically Check for Updates";
 "update.checking" = "Checking for Updates…";
@@ -65,6 +64,12 @@
 "update.readOnlyInstall" = "The current app location cannot be replaced without administrator access. Open the download page and install this update manually.";
 "update.helperMissing" = "The update helper is missing from this installation.";
 "update.installFailed" = "The update could not be installed. Your current copy was not changed.";
-"widget.helpTitle" = "Add Gauge for Codex to the desktop";
-"widget.helpBody" = "Control-click the desktop, choose Edit Widgets, search for Gauge for Codex, then drag the small or medium widget to the desktop. Desktop widgets require macOS 14 or later.";
-"widget.openSettings" = "Open Desktop Settings";
+"menu.desktopWidget" = "Desktop Widget";
+"widget.show" = "Show on Desktop";
+"widget.hide" = "Hide from Desktop";
+"widget.sizeSmall" = "Small";
+"widget.sizeMedium" = "Medium";
+"widget.resetPosition" = "Reset Position";
+"widget.noData" = "Open the menu to sync Codex usage.";
+"widget.resetIn" = "Resets in %@";
+"widget.accessibility" = "Gauge for Codex desktop usage widget";

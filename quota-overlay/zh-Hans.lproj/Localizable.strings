@@ -42,7 +42,6 @@
 "accessibility.menu" = "%@ 额度菜单";
 "accessibility.value" = "剩余 %@。%@。%@。";
 "about.body" = "%@ 是一款独立的 macOS 菜单栏工具。它从本机安装的 Codex 应用读取额度；同步失败时保留最后一次成功结果，并且不发送遥测数据。\n\n本工具与 OpenAI 无隶属或背书关系。Codex 未来版本可能调整本地数据接口。";
-"menu.addWidget" = "添加桌面组件…";
 "menu.checkUpdates" = "检查更新…";
 "menu.automaticUpdates" = "自动检查更新";
 "update.checking" = "正在检查更新…";
@@ -65,6 +64,12 @@
 "update.readOnlyInstall" = "当前位置需要管理员权限才能替换应用，请打开下载页面手动安装。";
 "update.helperMissing" = "当前安装中缺少更新辅助程序。";
 "update.installFailed" = "无法安装更新，当前版本没有被修改。";
-"widget.helpTitle" = "将 Gauge for Codex 添加到桌面";
-"widget.helpBody" = "按住 Control 点击桌面，选择“编辑小组件”，搜索 Gauge for Codex，再将小号或中号组件拖到桌面。桌面组件需要 macOS 14 或更高版本。";
-"widget.openSettings" = "打开桌面设置";
+"menu.desktopWidget" = "桌面组件";
+"widget.show" = "显示在桌面";
+"widget.hide" = "从桌面隐藏";
+"widget.sizeSmall" = "小号";
+"widget.sizeMedium" = "中号";
+"widget.resetPosition" = "重置位置";
+"widget.noData" = "打开菜单即可同步 Codex 额度。";
+"widget.resetIn" = "%@后重置";
+"widget.accessibility" = "Gauge for Codex 桌面额度组件";

@@ -1,9 +1,0 @@
-"widget.name" = "Uso de Codex";
-"widget.description" = "Consulta el uso restante de Codex y la hora de reinicio.";
-"widget.title" = "Uso de Codex";
-"widget.hours" = "%d h";
-"widget.days" = "%d días";
-"widget.window" = "Periodo de uso";
-"widget.openApp" = "Abre Gauge for Codex para cargar el uso.";
-"widget.nextReset" = "El periodo más limitado se reinicia";
-"widget.resetUnknown" = "Reinicio no disponible";

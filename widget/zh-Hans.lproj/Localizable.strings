@@ -1,9 +1,0 @@
-"widget.name" = "Codex 额度";
-"widget.description" = "查看 Codex 剩余额度与重置时间。";
-"widget.title" = "Codex 额度";
-"widget.hours" = "%d 小时";
-"widget.days" = "%d 天";
-"widget.window" = "额度周期";
-"widget.openApp" = "打开 Gauge for Codex 获取额度。";
-"widget.nextReset" = "最紧张额度将在";
-"widget.resetUnknown" = "重置时间未知";

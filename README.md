@@ -28,7 +28,7 @@ The original icon combines a geometric **C** for Codex compatibility, a **`>_`**
 - Refreshes at launch, every 60 seconds, when the Mac wakes, and after a reset.
 - Preserves the last successful value during transient failures and marks stale data.
 - Includes a percentage-only compact mode and a manual fallback.
-- Adds native small and medium desktop widgets on macOS 14 or later; the system automatically shifts their background between full-color and subdued desktop appearances.
+- Adds draggable small and medium desktop widgets on macOS 12 or later, with a light system background when Finder is active and a subdued material treatment while other apps are in front.
 - Checks GitHub Releases once a day by default, with an off switch and a manual check. Verified updates can download, replace the writable app copy, and relaunch automatically.
 - Runs natively on Apple silicon and Intel Macs without Electron.
 - Contains no analytics, advertising, account system, or telemetry.
@@ -37,7 +37,7 @@ The original icon combines a geometric **C** for Codex compatibility, a **`>_`**
 
 - macOS 12 Monterey or later.
 - Codex or the ChatGPT desktop app installed and signed in, or a signed-in Codex CLI available in a standard location.
-- Xcode 15 or later when building the desktop widget from source. Older Command Line Tools can still build the menu-bar app without the widget.
+- Xcode Command Line Tools only when building from source.
 
 ## Download
 
@@ -82,7 +82,7 @@ flowchart LR
     C --> D[Remaining percentage and reset time]
     D --> E[macOS menu bar]
     D --> F[Local preferences cache]
-    F --> G[Small and medium WidgetKit widgets]
+    D --> G[Small and medium desktop widgets]
 ```
 
 Gauge for Codex starts the `codex app-server --stdio` executable and requests `account/rateLimits/read`. It does not execute prompts or read conversation content. This is a local integration boundary rather than a documented stable public API, so a future Codex update may require an adapter update.

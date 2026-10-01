@@ -28,8 +28,4 @@ if ! launchctl bootstrap "$GUI_DOMAIN" "$AGENT_TARGET"; then
   launchctl bootstrap "$GUI_DOMAIN" "$AGENT_TARGET"
 fi
 launchctl kickstart -k "$GUI_DOMAIN/$AGENT_LABEL"
-WIDGET_TARGET="$APP_TARGET/Contents/PlugIns/GaugeForCodexWidget.appex"
-if [[ -d "$WIDGET_TARGET" ]]; then
-  pluginkit -a "$WIDGET_TARGET" 2>/dev/null || true
-fi
 echo "Installed: $APP_TARGET"

@@ -1,9 +1,0 @@
-"widget.name" = "Codex Usage";
-"widget.description" = "See your remaining Codex usage and reset time.";
-"widget.title" = "Codex Usage";
-"widget.hours" = "%d hr";
-"widget.days" = "%d days";
-"widget.window" = "Usage window";
-"widget.openApp" = "Open Gauge for Codex to load usage.";
-"widget.nextReset" = "Most constrained window resets";
-"widget.resetUnknown" = "Reset unavailable";

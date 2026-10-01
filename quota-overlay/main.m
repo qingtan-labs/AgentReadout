@@ -1,13 +1,9 @@
 #import <Cocoa/Cocoa.h>
 #import <CommonCrypto/CommonDigest.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import <QuartzCore/QuartzCore.h>
 #import <math.h>
 #import <unistd.h>
-#ifndef QG_WIDGETKIT_BRIDGE
-#define QG_WIDGETKIT_BRIDGE 1
-#endif
-#if QG_WIDGETKIT_BRIDGE
-#import "GaugeForCodex-Swift.h"
-#endif
 
 static NSString * const QGProductName = @"Gauge for Codex";
 static NSString * const QGPreviousBundleID = @"com.local.codexgauge";
@@ -16,6 +12,9 @@ static NSString * const QGLegacyPrefix = @"CodexQuotaOverlay";
 static NSString * const QGWindowsKey = @"QuotaWindows";
 static NSString * const QGLastSyncKey = @"LastSuccessfulSync";
 static NSString * const QGDisplayModeKey = @"DisplayMode";
+static NSString * const QGDesktopWidgetVisibleKey = @"DesktopWidgetVisible";
+static NSString * const QGDesktopWidgetSizeKey = @"DesktopWidgetSize";
+static NSString * const QGDesktopWidgetFrameKey = @"DesktopWidgetFrame";
 static NSString * const QGAutomaticUpdateChecksKey = @"AutomaticUpdateChecks";
 static NSString * const QGLastUpdateCheckKey = @"LastUpdateCheck";
 static NSString * const QGReleaseAPIURL = @"https://api.github.com/repos/qingtan-labs/GaugeForCodex/releases/latest";
@@ -245,6 +244,11 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     QGDisplayModeCompact
 };
 
+typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
+    QGDesktopWidgetSizeSmall,
+    QGDesktopWidgetSizeMedium
+};
+
 @interface QGStatusContentView : NSView
 @property (copy, nonatomic) NSString *displayText;
 @property (nonatomic) double remainingPercent;
@@ -299,7 +303,125 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 }
 @end
 
-@interface QGAppDelegate : NSObject <NSApplicationDelegate, NSMenuDelegate>
+@interface QGDesktopWidgetView : NSView
+@property (nonatomic, copy) NSArray<NSDictionary *> *windowModels;
+@property (nonatomic, copy) NSString *freshnessText;
+@property (nonatomic, copy) NSString *emptyText;
+@property (nonatomic) BOOL medium;
+@property (nonatomic) BOOL desktopFocused;
+@end
+
+@implementation QGDesktopWidgetView
+- (BOOL)isFlipped { return YES; }
+- (BOOL)mouseDownCanMoveWindow { return YES; }
+- (void)setWindowModels:(NSArray<NSDictionary *> *)value { _windowModels = [value copy]; [self setNeedsDisplay:YES]; }
+- (void)setFreshnessText:(NSString *)value { _freshnessText = [value copy]; [self setNeedsDisplay:YES]; }
+- (void)setEmptyText:(NSString *)value { _emptyText = [value copy]; [self setNeedsDisplay:YES]; }
+- (void)setMedium:(BOOL)value { _medium = value; [self setNeedsDisplay:YES]; }
+- (void)setDesktopFocused:(BOOL)value { _desktopFocused = value; [self setNeedsDisplay:YES]; }
+- (void)viewDidChangeEffectiveAppearance { [super viewDidChangeEffectiveAppearance]; [self setNeedsDisplay:YES]; }
+
+- (void)drawText:(NSString *)text inRect:(NSRect)rect font:(NSFont *)font color:(NSColor *)color
+       alignment:(NSTextAlignment)alignment {
+    if (!text.length) return;
+    NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
+    style.alignment = alignment;
+    style.lineBreakMode = NSLineBreakByTruncatingTail;
+    NSDictionary *attributes = @{
+        NSFontAttributeName: font,
+        NSForegroundColorAttributeName: color,
+        NSParagraphStyleAttributeName: style
+    };
+    [text drawInRect:rect withAttributes:attributes];
+}
+
+- (void)drawProgressInRect:(NSRect)rect percent:(double)percent {
+    NSColor *label = NSColor.labelColor;
+    [[label colorWithAlphaComponent:0.14] setFill];
+    [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:NSHeight(rect) / 2.0 yRadius:NSHeight(rect) / 2.0] fill];
+    CGFloat width = MAX(5.0, NSWidth(rect) * MIN(100.0, MAX(0.0, percent)) / 100.0);
+    NSRect fill = NSMakeRect(NSMinX(rect), NSMinY(rect), MIN(NSWidth(rect), width), NSHeight(rect));
+    NSGradient *gradient = [[NSGradient alloc] initWithStartingColor:NSColor.systemCyanColor
+                                                        endingColor:NSColor.systemGreenColor];
+    NSBezierPath *fillPath = [NSBezierPath bezierPathWithRoundedRect:fill
+                                                             xRadius:NSHeight(fill) / 2.0
+                                                             yRadius:NSHeight(fill) / 2.0];
+    [gradient drawInBezierPath:fillPath angle:0.0];
+}
+
+- (void)drawHeaderInWidth:(CGFloat)width {
+    NSRect badge = NSMakeRect(16, 14, 25, 25);
+    [NSColor.systemTealColor setFill];
+    [[NSBezierPath bezierPathWithRoundedRect:badge xRadius:8 yRadius:8] fill];
+    [self drawText:@">_" inRect:NSInsetRect(badge, 2, 4)
+              font:[NSFont monospacedSystemFontOfSize:10 weight:NSFontWeightBold]
+             color:NSColor.whiteColor alignment:NSTextAlignmentCenter];
+    [self drawText:QGProductName inRect:NSMakeRect(48, 16, width - 64, 22)
+              font:[NSFont systemFontOfSize:13 weight:NSFontWeightSemibold]
+             color:NSColor.labelColor alignment:NSTextAlignmentLeft];
+}
+
+- (void)drawCard:(NSDictionary *)model inRect:(NSRect)rect {
+    [[NSColor.labelColor colorWithAlphaComponent:_desktopFocused ? 0.055 : 0.08] setFill];
+    [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:14 yRadius:14] fill];
+    [self drawText:model[@"label"] inRect:NSMakeRect(NSMinX(rect) + 11, NSMinY(rect) + 9, NSWidth(rect) - 22, 18)
+              font:[NSFont systemFontOfSize:11 weight:NSFontWeightSemibold]
+             color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
+    [self drawText:model[@"percentText"] inRect:NSMakeRect(NSMinX(rect) + 11, NSMinY(rect) + 27, NSWidth(rect) - 22, 34)
+              font:[NSFont monospacedDigitSystemFontOfSize:27 weight:NSFontWeightBold]
+             color:NSColor.labelColor alignment:NSTextAlignmentLeft];
+    [self drawProgressInRect:NSMakeRect(NSMinX(rect) + 11, NSMaxY(rect) - 13, NSWidth(rect) - 22, 6)
+                      percent:[model[@"percent"] doubleValue]];
+}
+
+- (void)drawRect:(NSRect)dirtyRect {
+    (void)dirtyRect;
+    NSRect bounds = self.bounds;
+    NSColor *background = _desktopFocused
+        ? [NSColor.windowBackgroundColor colorWithAlphaComponent:0.94]
+        : [NSColor.windowBackgroundColor colorWithAlphaComponent:0.30];
+    [background setFill];
+    [[NSBezierPath bezierPathWithRoundedRect:bounds xRadius:24 yRadius:24] fill];
+    [self drawHeaderInWidth:NSWidth(bounds)];
+
+    if (!_windowModels.count) {
+        [self drawText:@"--%" inRect:NSMakeRect(16, 57, NSWidth(bounds) - 32, 48)
+                  font:[NSFont monospacedDigitSystemFontOfSize:38 weight:NSFontWeightBold]
+                 color:NSColor.labelColor alignment:NSTextAlignmentLeft];
+        [self drawText:_emptyText inRect:NSMakeRect(16, 112, NSWidth(bounds) - 32, 38)
+                  font:[NSFont systemFontOfSize:11 weight:NSFontWeightRegular]
+                 color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
+        return;
+    }
+
+    if (_medium) {
+        CGFloat gap = 10.0;
+        CGFloat cardWidth = (NSWidth(bounds) - 32.0 - gap) / 2.0;
+        for (NSUInteger index = 0; index < MIN((NSUInteger)2, _windowModels.count); index++) {
+            NSRect card = NSMakeRect(16.0 + index * (cardWidth + gap), 49.0, cardWidth, 79.0);
+            [self drawCard:_windowModels[index] inRect:card];
+        }
+        [self drawText:_freshnessText inRect:NSMakeRect(17, 139, NSWidth(bounds) - 34, 20)
+                  font:[NSFont systemFontOfSize:10 weight:NSFontWeightRegular]
+                 color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
+    } else {
+        NSDictionary *model = _windowModels.firstObject;
+        [self drawText:model[@"percentText"] inRect:NSMakeRect(16, 48, NSWidth(bounds) - 32, 50)
+                  font:[NSFont monospacedDigitSystemFontOfSize:40 weight:NSFontWeightBold]
+                 color:NSColor.labelColor alignment:NSTextAlignmentLeft];
+        [self drawText:model[@"label"] inRect:NSMakeRect(17, 100, NSWidth(bounds) - 34, 18)
+                  font:[NSFont systemFontOfSize:11 weight:NSFontWeightSemibold]
+                 color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
+        [self drawProgressInRect:NSMakeRect(16, 125, NSWidth(bounds) - 32, 7)
+                          percent:[model[@"percent"] doubleValue]];
+        [self drawText:_freshnessText inRect:NSMakeRect(17, 141, NSWidth(bounds) - 34, 20)
+                  font:[NSFont systemFontOfSize:10 weight:NSFontWeightRegular]
+                 color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
+    }
+}
+@end
+
+@interface QGAppDelegate : NSObject <NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate>
 @property NSStatusItem *statusItem;
 @property QGStatusContentView *statusContentView;
 @property NSMenu *statusMenu;
@@ -313,6 +435,10 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 @property NSMenuItem *fullModeMenuItem;
 @property NSMenuItem *compactModeMenuItem;
 @property NSMenuItem *addWidgetMenuItem;
+@property NSMenuItem *toggleWidgetMenuItem;
+@property NSMenuItem *smallWidgetMenuItem;
+@property NSMenuItem *mediumWidgetMenuItem;
+@property NSMenuItem *resetWidgetPositionMenuItem;
 @property NSMenuItem *checkUpdateMenuItem;
 @property NSMenuItem *automaticUpdateMenuItem;
 @property NSMenuItem *aboutMenuItem;
@@ -320,6 +446,10 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 @property NSTimer *syncTimer;
 @property NSTimer *displayTimer;
 @property NSTimer *updateTimer;
+@property NSPanel *desktopWidgetPanel;
+@property NSVisualEffectView *desktopWidgetEffectView;
+@property QGDesktopWidgetView *desktopWidgetView;
+@property QGDesktopWidgetSize desktopWidgetSize;
 @property NSArray<NSDictionary *> *quotaWindows;
 @property NSDictionary *selectedWindow;
 @property QGSyncState syncState;
@@ -336,7 +466,8 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 - (void)performAutomaticUpdateCheckIfNeeded;
 - (void)checkForUpdates:(id)sender;
 - (void)toggleAutomaticUpdateChecks:(id)sender;
-- (void)showWidgetHelp:(id)sender;
+- (void)refreshDesktopWidget;
+- (void)updateDesktopWidgetAppearance;
 @end
 
 @implementation QGAppDelegate
@@ -348,6 +479,9 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     }
     [self restoreCachedQuota];
     [self publishWidgetSnapshot];
+    id savedWidgetSize = [NSUserDefaults.standardUserDefaults objectForKey:QGDesktopWidgetSizeKey];
+    _desktopWidgetSize = savedWidgetSize && [savedWidgetSize integerValue] == QGDesktopWidgetSizeSmall
+        ? QGDesktopWidgetSizeSmall : QGDesktopWidgetSizeMedium;
 
     _statusItem = [NSStatusBar.systemStatusBar statusItemWithLength:56.0];
     _statusItem.autosaveName = @"CodexGaugeStatusItem";
@@ -359,6 +493,9 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     _statusMenu = [self makeMenu];
     _statusItem.menu = _statusMenu;
     [self updateStatusItem];
+    if ([NSUserDefaults.standardUserDefaults boolForKey:QGDesktopWidgetVisibleKey]) {
+        [self showDesktopWidget:nil];
+    }
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(localeOrTimeZoneChanged:)
                                                  name:NSCurrentLocaleDidChangeNotification object:nil];
@@ -366,6 +503,8 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
                                                  name:NSSystemTimeZoneDidChangeNotification object:nil];
     [NSWorkspace.sharedWorkspace.notificationCenter addObserver:self selector:@selector(workspaceDidWake:)
                                                             name:NSWorkspaceDidWakeNotification object:nil];
+    [NSWorkspace.sharedWorkspace.notificationCenter addObserver:self selector:@selector(activeApplicationChanged:)
+                                                            name:NSWorkspaceDidActivateApplicationNotification object:nil];
 
     __weak QGAppDelegate *weakSelf = self;
     _syncTimer = [NSTimer timerWithTimeInterval:60.0 repeats:YES block:^(NSTimer *timer) {
@@ -399,16 +538,6 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     [_updateTimer invalidate];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:self];
-}
-
-- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls {
-    (void)application;
-    for (NSURL *url in urls) {
-        if ([url.scheme.lowercaseString isEqualToString:@"gaugeforcodex"] &&
-            [url.host.lowercaseString isEqualToString:@"refresh"]) {
-            [self refreshQuota:nil];
-        }
-    }
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { (void)sender; return NO; }
@@ -446,8 +575,21 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     _manualMenuItem = [menu addItemWithTitle:@"" action:@selector(editQuota:) keyEquivalent:@""];
     _manualMenuItem.target = self;
     [menu addItem:NSMenuItem.separatorItem];
-    _addWidgetMenuItem = [menu addItemWithTitle:@"" action:@selector(showWidgetHelp:) keyEquivalent:@""];
-    _addWidgetMenuItem.target = self;
+    _addWidgetMenuItem = [menu addItemWithTitle:@"" action:nil keyEquivalent:@""];
+    NSMenu *widgetMenu = [NSMenu new];
+    _toggleWidgetMenuItem = [widgetMenu addItemWithTitle:@"" action:@selector(toggleDesktopWidget:) keyEquivalent:@""];
+    _toggleWidgetMenuItem.target = self;
+    [widgetMenu addItem:NSMenuItem.separatorItem];
+    _smallWidgetMenuItem = [widgetMenu addItemWithTitle:@"" action:@selector(changeDesktopWidgetSize:) keyEquivalent:@""];
+    _smallWidgetMenuItem.target = self;
+    _smallWidgetMenuItem.tag = QGDesktopWidgetSizeSmall;
+    _mediumWidgetMenuItem = [widgetMenu addItemWithTitle:@"" action:@selector(changeDesktopWidgetSize:) keyEquivalent:@""];
+    _mediumWidgetMenuItem.target = self;
+    _mediumWidgetMenuItem.tag = QGDesktopWidgetSizeMedium;
+    [widgetMenu addItem:NSMenuItem.separatorItem];
+    _resetWidgetPositionMenuItem = [widgetMenu addItemWithTitle:@"" action:@selector(resetDesktopWidgetPosition:) keyEquivalent:@""];
+    _resetWidgetPositionMenuItem.target = self;
+    _addWidgetMenuItem.submenu = widgetMenu;
     _checkUpdateMenuItem = [menu addItemWithTitle:@"" action:@selector(checkForUpdates:) keyEquivalent:@""];
     _checkUpdateMenuItem.target = self;
     _automaticUpdateMenuItem = [menu addItemWithTitle:@"" action:@selector(toggleAutomaticUpdateChecks:) keyEquivalent:@""];
@@ -470,6 +612,7 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 - (void)localeOrTimeZoneChanged:(NSNotification *)notification {
     (void)notification;
     [self updateStatusItem];
+    [self refreshDesktopWidget];
 }
 
 - (void)workspaceDidWake:(NSNotification *)notification {
@@ -478,8 +621,14 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     [self performAutomaticUpdateCheckIfNeeded];
 }
 
+- (void)activeApplicationChanged:(NSNotification *)notification {
+    (void)notification;
+    [self updateDesktopWidgetAppearance];
+}
+
 - (void)displayTimerFired {
     [self updateStatusItem];
+    [self refreshDesktopWidget];
     NSTimeInterval resetAt = [_selectedWindow[@"resetsAt"] doubleValue];
     if (resetAt > 0 && resetAt <= NSDate.date.timeIntervalSince1970 && !_syncInProgress) {
         NSTimeInterval age = _lastSuccessfulSync ? -_lastSuccessfulSync.timeIntervalSinceNow : DBL_MAX;
@@ -593,11 +742,18 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     _compactModeMenuItem.title = QGL(@"menu.displayCompact");
     _fullModeMenuItem.state = _displayMode == QGDisplayModeFull ? NSControlStateValueOn : NSControlStateValueOff;
     _compactModeMenuItem.state = _displayMode == QGDisplayModeCompact ? NSControlStateValueOn : NSControlStateValueOff;
-    _addWidgetMenuItem.title = QGL(@"menu.addWidget");
-    NSString *widgetPath = [NSBundle.mainBundle.builtInPlugInsPath stringByAppendingPathComponent:@"GaugeForCodexWidget.appex"];
-    BOOL widgetAvailable = NSProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 14 &&
-        [NSFileManager.defaultManager fileExistsAtPath:widgetPath];
-    _addWidgetMenuItem.hidden = !widgetAvailable;
+    _addWidgetMenuItem.title = QGL(@"menu.desktopWidget");
+    _addWidgetMenuItem.hidden = NO;
+    BOOL widgetVisible = _desktopWidgetPanel.isVisible;
+    _toggleWidgetMenuItem.title = widgetVisible ? QGL(@"widget.hide") : QGL(@"widget.show");
+    _smallWidgetMenuItem.title = QGL(@"widget.sizeSmall");
+    _mediumWidgetMenuItem.title = QGL(@"widget.sizeMedium");
+    _smallWidgetMenuItem.state = _desktopWidgetSize == QGDesktopWidgetSizeSmall
+        ? NSControlStateValueOn : NSControlStateValueOff;
+    _mediumWidgetMenuItem.state = _desktopWidgetSize == QGDesktopWidgetSizeMedium
+        ? NSControlStateValueOn : NSControlStateValueOff;
+    _resetWidgetPositionMenuItem.title = QGL(@"widget.resetPosition");
+    _resetWidgetPositionMenuItem.enabled = widgetVisible;
     _checkUpdateMenuItem.title = _updateInstallInProgress ? QGL(@"update.installing") :
         (_updateCheckInProgress ? QGL(@"update.checking") :
          (_availableUpdateVersion.length
@@ -689,9 +845,7 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 
 - (void)publishWidgetSnapshot {
     [NSUserDefaults.standardUserDefaults synchronize];
-#if QG_WIDGETKIT_BRIDGE
-    [QGWidgetBridge reloadAllTimelines];
-#endif
+    [self refreshDesktopWidget];
 }
 
 - (NSArray<NSString *> *)codexBinaryCandidates {
@@ -949,17 +1103,174 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     }
 }
 
-- (void)showWidgetHelp:(id)sender {
+- (NSSize)desktopWidgetWindowSize {
+    return _desktopWidgetSize == QGDesktopWidgetSizeMedium ? NSMakeSize(368, 174) : NSMakeSize(174, 174);
+}
+
+- (NSRect)defaultDesktopWidgetFrame {
+    NSSize size = [self desktopWidgetWindowSize];
+    NSScreen *screen = NSScreen.mainScreen ?: NSScreen.screens.firstObject;
+    NSRect visible = screen ? screen.visibleFrame : NSMakeRect(0, 0, 1440, 900);
+    return NSMakeRect(NSMaxX(visible) - size.width - 28.0,
+                      NSMaxY(visible) - size.height - 34.0,
+                      size.width, size.height);
+}
+
+- (BOOL)desktopWidgetFrameIsUsable:(NSRect)frame {
+    if (frame.size.width < 100 || frame.size.height < 100) return NO;
+    for (NSScreen *screen in NSScreen.screens) {
+        NSRect intersection = NSIntersectionRect(frame, screen.visibleFrame);
+        if (NSWidth(intersection) >= 60 && NSHeight(intersection) >= 60) return YES;
+    }
+    return NO;
+}
+
+- (void)configureDesktopWidgetIfNeeded {
+    if (_desktopWidgetPanel) return;
+    NSSize size = [self desktopWidgetWindowSize];
+    NSRect frame = [self defaultDesktopWidgetFrame];
+    NSString *savedFrame = [NSUserDefaults.standardUserDefaults stringForKey:QGDesktopWidgetFrameKey];
+    if (savedFrame.length) {
+        NSRect candidate = NSRectFromString(savedFrame);
+        candidate.size = size;
+        if ([self desktopWidgetFrameIsUsable:candidate]) frame = candidate;
+    }
+
+    _desktopWidgetPanel = [[NSPanel alloc] initWithContentRect:frame
+                                                     styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
+                                                       backing:NSBackingStoreBuffered defer:NO];
+    _desktopWidgetPanel.delegate = self;
+    _desktopWidgetPanel.opaque = NO;
+    _desktopWidgetPanel.backgroundColor = NSColor.clearColor;
+    _desktopWidgetPanel.hasShadow = YES;
+    _desktopWidgetPanel.movableByWindowBackground = YES;
+    _desktopWidgetPanel.hidesOnDeactivate = NO;
+    _desktopWidgetPanel.releasedWhenClosed = NO;
+    _desktopWidgetPanel.excludedFromWindowsMenu = YES;
+    _desktopWidgetPanel.level = (NSWindowLevel)(CGWindowLevelForKey(kCGDesktopIconWindowLevelKey) + 1);
+    _desktopWidgetPanel.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
+        NSWindowCollectionBehaviorStationary | NSWindowCollectionBehaviorFullScreenAuxiliary |
+        NSWindowCollectionBehaviorIgnoresCycle;
+
+    _desktopWidgetEffectView = [[NSVisualEffectView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
+    _desktopWidgetEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    _desktopWidgetEffectView.wantsLayer = YES;
+    _desktopWidgetEffectView.layer.cornerRadius = 24.0;
+    _desktopWidgetEffectView.layer.masksToBounds = YES;
+    _desktopWidgetPanel.contentView = _desktopWidgetEffectView;
+
+    _desktopWidgetView = [[QGDesktopWidgetView alloc] initWithFrame:_desktopWidgetEffectView.bounds];
+    _desktopWidgetView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    _desktopWidgetView.medium = _desktopWidgetSize == QGDesktopWidgetSizeMedium;
+    _desktopWidgetView.emptyText = QGL(@"widget.noData");
+    [_desktopWidgetView setAccessibilityLabel:QGL(@"widget.accessibility")];
+    [_desktopWidgetEffectView addSubview:_desktopWidgetView];
+    [self updateDesktopWidgetAppearance];
+    [self refreshDesktopWidget];
+}
+
+- (void)showDesktopWidget:(id)sender {
     (void)sender;
-    NSAlert *alert = [NSAlert new];
-    alert.messageText = QGL(@"widget.helpTitle");
-    alert.informativeText = QGL(@"widget.helpBody");
-    [alert addButtonWithTitle:QGL(@"widget.openSettings")];
-    [alert addButtonWithTitle:QGL(@"common.cancel")];
-    [NSApp activateIgnoringOtherApps:YES];
-    if ([alert runModal] == NSAlertFirstButtonReturn) {
-        NSURL *settingsURL = [NSURL URLWithString:@"x-apple.systempreferences:com.apple.Desktop-Settings.extension"];
-        if (settingsURL) [NSWorkspace.sharedWorkspace openURL:settingsURL];
+    [self configureDesktopWidgetIfNeeded];
+    [_desktopWidgetPanel orderFront:nil];
+    [NSUserDefaults.standardUserDefaults setBool:YES forKey:QGDesktopWidgetVisibleKey];
+    [self updateDesktopWidgetAppearance];
+    [self refreshDesktopWidget];
+}
+
+- (void)hideDesktopWidget:(id)sender {
+    (void)sender;
+    [_desktopWidgetPanel orderOut:nil];
+    [NSUserDefaults.standardUserDefaults setBool:NO forKey:QGDesktopWidgetVisibleKey];
+}
+
+- (void)toggleDesktopWidget:(id)sender {
+    if (_desktopWidgetPanel.isVisible) [self hideDesktopWidget:sender];
+    else [self showDesktopWidget:sender];
+}
+
+- (void)changeDesktopWidgetSize:(NSMenuItem *)sender {
+    QGDesktopWidgetSize newSize = sender.tag == QGDesktopWidgetSizeMedium
+        ? QGDesktopWidgetSizeMedium : QGDesktopWidgetSizeSmall;
+    if (_desktopWidgetSize == newSize && _desktopWidgetPanel) {
+        [self showDesktopWidget:nil];
+        return;
+    }
+    _desktopWidgetSize = newSize;
+    [NSUserDefaults.standardUserDefaults setInteger:newSize forKey:QGDesktopWidgetSizeKey];
+    [self configureDesktopWidgetIfNeeded];
+    NSRect oldFrame = _desktopWidgetPanel.frame;
+    NSSize size = [self desktopWidgetWindowSize];
+    NSRect newFrame = NSMakeRect(NSMinX(oldFrame), NSMaxY(oldFrame) - size.height, size.width, size.height);
+    if (![self desktopWidgetFrameIsUsable:newFrame]) newFrame = [self defaultDesktopWidgetFrame];
+    _desktopWidgetView.medium = newSize == QGDesktopWidgetSizeMedium;
+    [_desktopWidgetPanel setFrame:newFrame display:YES animate:YES];
+    [NSUserDefaults.standardUserDefaults setObject:NSStringFromRect(newFrame) forKey:QGDesktopWidgetFrameKey];
+    [self showDesktopWidget:nil];
+}
+
+- (void)resetDesktopWidgetPosition:(id)sender {
+    (void)sender;
+    [self configureDesktopWidgetIfNeeded];
+    NSRect frame = [self defaultDesktopWidgetFrame];
+    [_desktopWidgetPanel setFrame:frame display:YES animate:YES];
+    [NSUserDefaults.standardUserDefaults setObject:NSStringFromRect(frame) forKey:QGDesktopWidgetFrameKey];
+    [self showDesktopWidget:nil];
+}
+
+- (void)windowDidMove:(NSNotification *)notification {
+    if (notification.object != _desktopWidgetPanel) return;
+    [NSUserDefaults.standardUserDefaults setObject:NSStringFromRect(_desktopWidgetPanel.frame)
+                                            forKey:QGDesktopWidgetFrameKey];
+}
+
+- (void)updateDesktopWidgetAppearance {
+    if (!_desktopWidgetPanel) return;
+    NSString *frontmostID = NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier.lowercaseString;
+    BOOL desktopFocused = [frontmostID isEqualToString:@"com.apple.finder"];
+    _desktopWidgetView.desktopFocused = desktopFocused;
+    _desktopWidgetEffectView.material = desktopFocused ? NSVisualEffectMaterialWindowBackground : NSVisualEffectMaterialPopover;
+    _desktopWidgetEffectView.blendingMode = desktopFocused ? NSVisualEffectBlendingModeWithinWindow : NSVisualEffectBlendingModeBehindWindow;
+    _desktopWidgetEffectView.state = NSVisualEffectStateActive;
+}
+
+- (void)refreshDesktopWidget {
+    if (!_desktopWidgetView) return;
+    NSArray<NSDictionary *> *source = nil;
+    if (_desktopWidgetSize == QGDesktopWidgetSizeMedium) {
+        source = [_quotaWindows sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *left, NSDictionary *right) {
+            double leftDuration = [left[@"windowDurationMins"] doubleValue];
+            double rightDuration = [right[@"windowDurationMins"] doubleValue];
+            if (leftDuration <= 0 && rightDuration > 0) return NSOrderedDescending;
+            if (rightDuration <= 0 && leftDuration > 0) return NSOrderedAscending;
+            if (leftDuration < rightDuration) return NSOrderedAscending;
+            if (leftDuration > rightDuration) return NSOrderedDescending;
+            return NSOrderedSame;
+        }];
+    } else {
+        source = _selectedWindow ? @[_selectedWindow] : @[];
+    }
+    NSMutableArray<NSDictionary *> *models = [NSMutableArray array];
+    for (NSDictionary *window in source) {
+        [models addObject:@{
+            @"label": [self windowLabel:window],
+            @"percent": window[@"remainingPercent"] ?: @0,
+            @"percentText": [self percentageString:[window[@"remainingPercent"] doubleValue]]
+        }];
+        if (models.count == 2) break;
+    }
+    _desktopWidgetView.windowModels = models;
+    _desktopWidgetView.emptyText = QGL(@"widget.noData");
+    if (_selectedWindow) {
+        NSTimeInterval resetAt = [_selectedWindow[@"resetsAt"] doubleValue];
+        if (resetAt > NSDate.date.timeIntervalSince1970) {
+            NSString *duration = [self relativeDuration:resetAt - NSDate.date.timeIntervalSince1970 maximumUnits:2];
+            _desktopWidgetView.freshnessText = [NSString stringWithFormat:QGL(@"widget.resetIn"), duration];
+        } else {
+            _desktopWidgetView.freshnessText = QGL(@"quota.resetUnknown");
+        }
+    } else {
+        _desktopWidgetView.freshnessText = self.freshnessText;
     }
 }
 

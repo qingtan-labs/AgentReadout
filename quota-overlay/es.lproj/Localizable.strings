@@ -42,7 +42,6 @@
 "accessibility.menu" = "Menú de uso de %@";
 "accessibility.value" = "Queda %@. %@. %@.";
 "about.body" = "%@ es una utilidad independiente para la barra de menús de macOS. Lee los datos de uso desde la aplicación Codex instalada localmente, conserva el último valor correcto cuando falla una actualización y no envía telemetría.\n\nEsta utilidad no está afiliada ni respaldada por OpenAI. La interfaz local de datos puede cambiar en futuras versiones de Codex.";
-"menu.addWidget" = "Añadir widget al escritorio…";
 "menu.checkUpdates" = "Buscar actualizaciones…";
 "menu.automaticUpdates" = "Buscar actualizaciones automáticamente";
 "update.checking" = "Buscando actualizaciones…";
@@ -65,6 +64,12 @@
 "update.readOnlyInstall" = "La ubicación actual requiere permisos de administrador. Abre la página de descarga e instala la actualización manualmente.";
 "update.helperMissing" = "Falta el asistente de actualización en esta instalación.";
 "update.installFailed" = "No se pudo instalar la actualización. La copia actual no se modificó.";
-"widget.helpTitle" = "Añade Gauge for Codex al escritorio";
-"widget.helpBody" = "Haz Control-clic en el escritorio, elige Editar widgets, busca Gauge for Codex y arrastra el widget pequeño o mediano. Se requiere macOS 14 o posterior.";
-"widget.openSettings" = "Abrir ajustes del escritorio";
+"menu.desktopWidget" = "Widget de escritorio";
+"widget.show" = "Mostrar en el escritorio";
+"widget.hide" = "Ocultar del escritorio";
+"widget.sizeSmall" = "Pequeño";
+"widget.sizeMedium" = "Mediano";
+"widget.resetPosition" = "Restablecer posición";
+"widget.noData" = "Abre el menú para sincronizar el uso de Codex.";
+"widget.resetIn" = "Se reinicia en %@";
+"widget.accessibility" = "Widget de uso de Gauge for Codex";

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${0:A:h}"
-VERSION="${1:-1.0.2}"
+VERSION="${1:-1.0.3}"
 RELEASE_DIR="$ROOT_DIR/release"
 STAGING_DIR="$(mktemp -d)"
 APP_SOURCE="$ROOT_DIR/quota-overlay/build/Gauge for Codex.app"
@@ -21,10 +21,6 @@ mkdir -p "$RELEASE_DIR"
 BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_SOURCE/Contents/Info.plist")"
 if [[ "$BUILT_VERSION" != "$VERSION" ]]; then
   echo "Version mismatch: requested $VERSION but app declares $BUILT_VERSION" >&2
-  exit 1
-fi
-if [[ ! -d "$APP_SOURCE/Contents/PlugIns/GaugeForCodexWidget.appex" ]]; then
-  echo "Release builds require Xcode 15 or later and the embedded WidgetKit extension" >&2
   exit 1
 fi
 

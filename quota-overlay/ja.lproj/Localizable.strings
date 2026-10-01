@@ -42,7 +42,6 @@
 "accessibility.menu" = "%@ 使用量メニュー";
 "accessibility.value" = "残り %@。%@。%@。";
 "about.body" = "%@ は独立した macOS メニューバーユーティリティです。インストール済みの Codex アプリからローカルに使用量を読み取り、更新失敗時は最後に成功した値を保持します。テレメトリは送信しません。\n\n本ユーティリティは OpenAI と提携しておらず、OpenAI による推奨も受けていません。Codex の更新によりローカルデータインターフェイスが変更される場合があります。";
-"menu.addWidget" = "デスクトップウィジェットを追加…";
 "menu.checkUpdates" = "アップデートを確認…";
 "menu.automaticUpdates" = "アップデートを自動確認";
 "update.checking" = "アップデートを確認中…";
@@ -65,6 +64,12 @@
 "update.readOnlyInstall" = "現在の場所では管理者権限なしに置き換えできません。ダウンロードページから手動で更新してください。";
 "update.helperMissing" = "このインストールには更新ヘルパーがありません。";
 "update.installFailed" = "アップデートをインストールできませんでした。現在のアプリは変更されていません。";
-"widget.helpTitle" = "Gauge for Codex をデスクトップに追加";
-"widget.helpBody" = "デスクトップを Control クリックして「ウィジェットを編集」を選び、Gauge for Codex を検索して小または中サイズをドラッグします。macOS 14 以降が必要です。";
-"widget.openSettings" = "デスクトップ設定を開く";
+"menu.desktopWidget" = "デスクトップウィジェット";
+"widget.show" = "デスクトップに表示";
+"widget.hide" = "デスクトップから隠す";
+"widget.sizeSmall" = "小";
+"widget.sizeMedium" = "中";
+"widget.resetPosition" = "位置をリセット";
+"widget.noData" = "メニューを開いて Codex 使用量を同期してください。";
+"widget.resetIn" = "%@後にリセット";
+"widget.accessibility" = "Gauge for Codex デスクトップ使用量ウィジェット";
