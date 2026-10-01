@@ -65,6 +65,8 @@
 "update.helperMissing" = "このインストールには更新ヘルパーがありません。";
 "update.installFailed" = "アップデートをインストールできませんでした。現在のアプリは変更されていません。";
 "menu.desktopWidget" = "デスクトップウィジェット";
+"widget.title" = "Codex 使用枠";
+"widget.cached" = "古い値";
 "widget.show" = "デスクトップに表示";
 "widget.hide" = "デスクトップから隠す";
 "widget.sizeSmall" = "小";

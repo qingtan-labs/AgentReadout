@@ -306,9 +306,11 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 @interface QGDesktopWidgetView : NSView
 @property (nonatomic, copy) NSArray<NSDictionary *> *windowModels;
 @property (nonatomic, copy) NSString *freshnessText;
+@property (nonatomic, copy) NSString *exactResetText;
 @property (nonatomic, copy) NSString *emptyText;
 @property (nonatomic) BOOL medium;
 @property (nonatomic) BOOL desktopFocused;
+@property (nonatomic) BOOL stale;
 @end
 
 @implementation QGDesktopWidgetView
@@ -316,10 +318,20 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 - (BOOL)mouseDownCanMoveWindow { return YES; }
 - (void)setWindowModels:(NSArray<NSDictionary *> *)value { _windowModels = [value copy]; [self setNeedsDisplay:YES]; }
 - (void)setFreshnessText:(NSString *)value { _freshnessText = [value copy]; [self setNeedsDisplay:YES]; }
+- (void)setExactResetText:(NSString *)value { _exactResetText = [value copy]; [self setNeedsDisplay:YES]; }
 - (void)setEmptyText:(NSString *)value { _emptyText = [value copy]; [self setNeedsDisplay:YES]; }
 - (void)setMedium:(BOOL)value { _medium = value; [self setNeedsDisplay:YES]; }
 - (void)setDesktopFocused:(BOOL)value { _desktopFocused = value; [self setNeedsDisplay:YES]; }
+- (void)setStale:(BOOL)value { _stale = value; [self setNeedsDisplay:YES]; }
 - (void)viewDidChangeEffectiveAppearance { [super viewDidChangeEffectiveAppearance]; [self setNeedsDisplay:YES]; }
+
+- (NSColor *)primaryTextColor {
+    return _desktopFocused ? NSColor.labelColor : NSColor.whiteColor;
+}
+
+- (NSColor *)secondaryTextColor {
+    return _desktopFocused ? NSColor.secondaryLabelColor : [NSColor.whiteColor colorWithAlphaComponent:0.96];
+}
 
 - (void)drawText:(NSString *)text inRect:(NSRect)rect font:(NSFont *)font color:(NSColor *)color
        alignment:(NSTextAlignment)alignment {
@@ -336,87 +348,169 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 }
 
 - (void)drawProgressInRect:(NSRect)rect percent:(double)percent {
-    NSColor *label = NSColor.labelColor;
-    [[label colorWithAlphaComponent:0.14] setFill];
+    NSColor *trackColor = _desktopFocused
+        ? [NSColor.labelColor colorWithAlphaComponent:0.13]
+        : [NSColor.whiteColor colorWithAlphaComponent:0.26];
+    [trackColor setFill];
     [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:NSHeight(rect) / 2.0 yRadius:NSHeight(rect) / 2.0] fill];
-    CGFloat width = MAX(5.0, NSWidth(rect) * MIN(100.0, MAX(0.0, percent)) / 100.0);
+    if (percent <= 0.0) return;
+    CGFloat width = MAX(5.0, NSWidth(rect) * MIN(100.0, percent) / 100.0);
     NSRect fill = NSMakeRect(NSMinX(rect), NSMinY(rect), MIN(NSWidth(rect), width), NSHeight(rect));
-    NSGradient *gradient = [[NSGradient alloc] initWithStartingColor:NSColor.systemCyanColor
-                                                        endingColor:NSColor.systemGreenColor];
     NSBezierPath *fillPath = [NSBezierPath bezierPathWithRoundedRect:fill
                                                              xRadius:NSHeight(fill) / 2.0
                                                              yRadius:NSHeight(fill) / 2.0];
-    [gradient drawInBezierPath:fillPath angle:0.0];
+    if (_desktopFocused) {
+        NSGradient *gradient = [[NSGradient alloc] initWithStartingColor:NSColor.systemCyanColor
+                                                            endingColor:NSColor.systemGreenColor];
+        [gradient drawInBezierPath:fillPath angle:0.0];
+    } else {
+        [[NSColor.whiteColor colorWithAlphaComponent:0.92] setFill];
+        [fillPath fill];
+    }
 }
 
 - (void)drawHeaderInWidth:(CGFloat)width {
-    NSRect badge = NSMakeRect(16, 14, 25, 25);
-    [NSColor.systemTealColor setFill];
-    [[NSBezierPath bezierPathWithRoundedRect:badge xRadius:8 yRadius:8] fill];
-    [self drawText:@">_" inRect:NSInsetRect(badge, 2, 4)
-              font:[NSFont monospacedSystemFontOfSize:10 weight:NSFontWeightBold]
-             color:NSColor.whiteColor alignment:NSTextAlignmentCenter];
-    [self drawText:QGProductName inRect:NSMakeRect(48, 16, width - 64, 22)
-              font:[NSFont systemFontOfSize:13 weight:NSFontWeightSemibold]
-             color:NSColor.labelColor alignment:NSTextAlignmentLeft];
+    // Match the compact 24-point vector mark used by the Windows desktop widget.
+    CGFloat scale = 19.0 / 24.0;
+    NSAffineTransform *markTransform = [NSAffineTransform transform];
+    [markTransform translateXBy:15.0 yBy:14.0];
+    [markTransform scaleBy:scale];
+    NSColor *markColor = _desktopFocused
+        ? [NSColor colorWithSRGBRed:18.0 / 255.0 green:37.0 / 255.0 blue:26.0 / 255.0 alpha:1.0]
+        : [NSColor.whiteColor colorWithAlphaComponent:0.96];
+    [markColor setStroke];
+    NSBezierPath *ring = [NSBezierPath bezierPath];
+    [ring appendBezierPathWithArcWithCenter:NSMakePoint(12, 12) radius:8.5
+                                 startAngle:45 endAngle:315 clockwise:NO];
+    [ring transformUsingAffineTransform:markTransform];
+    ring.lineWidth = 3.0 * scale;
+    ring.lineCapStyle = NSLineCapStyleRound;
+    [ring stroke];
+    NSBezierPath *prompt = [NSBezierPath bezierPath];
+    [prompt moveToPoint:NSMakePoint(8.5, 8.5)];
+    [prompt lineToPoint:NSMakePoint(12, 12)];
+    [prompt lineToPoint:NSMakePoint(8.5, 15.5)];
+    [prompt moveToPoint:NSMakePoint(15, 15.5)];
+    [prompt lineToPoint:NSMakePoint(18.5, 15.5)];
+    [prompt transformUsingAffineTransform:markTransform];
+    prompt.lineWidth = 2.0 * scale;
+    prompt.lineCapStyle = NSLineCapStyleRound;
+    prompt.lineJoinStyle = NSLineJoinStyleRound;
+    [prompt stroke];
+    CGFloat titleWidth = _stale ? (_medium ? width - 98 : width - 67) : width - 58;
+    [self drawText:QGL(@"widget.title")
+            inRect:NSMakeRect(43, 13, titleWidth, 22)
+              font:[NSFont systemFontOfSize:12.5 weight:NSFontWeightSemibold]
+             color:[self primaryTextColor] alignment:NSTextAlignmentLeft];
+    if (_stale) {
+        if (_medium) {
+            [self drawText:QGL(@"widget.cached") inRect:NSMakeRect(width - 52, 16, 37, 17)
+                      font:[NSFont systemFontOfSize:9 weight:NSFontWeightSemibold]
+                     color:[self secondaryTextColor] alignment:NSTextAlignmentRight];
+        } else {
+            NSColor *indicator = _desktopFocused
+                ? [NSColor colorWithSRGBRed:0.60 green:0.34 blue:0.02 alpha:1.0]
+                : [NSColor colorWithSRGBRed:1.0 green:0.82 blue:0.48 alpha:1.0];
+            [indicator setFill];
+            [[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(width - 20, 21, 6, 6)] fill];
+        }
+    }
 }
 
 - (void)drawCard:(NSDictionary *)model inRect:(NSRect)rect {
-    [[NSColor.labelColor colorWithAlphaComponent:_desktopFocused ? 0.055 : 0.08] setFill];
-    [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:14 yRadius:14] fill];
-    [self drawText:model[@"label"] inRect:NSMakeRect(NSMinX(rect) + 11, NSMinY(rect) + 9, NSWidth(rect) - 22, 18)
+    NSBezierPath *card = [NSBezierPath bezierPathWithRoundedRect:rect xRadius:15 yRadius:15];
+    NSColor *fill = _desktopFocused
+        ? [NSColor.labelColor colorWithAlphaComponent:0.055]
+        : [NSColor.whiteColor colorWithAlphaComponent:0.11];
+    [fill setFill];
+    [card fill];
+    [self drawText:model[@"label"] inRect:NSMakeRect(NSMinX(rect) + 12, NSMinY(rect) + 9, NSWidth(rect) - 24, 17)
               font:[NSFont systemFontOfSize:11 weight:NSFontWeightSemibold]
-             color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
-    [self drawText:model[@"percentText"] inRect:NSMakeRect(NSMinX(rect) + 11, NSMinY(rect) + 27, NSWidth(rect) - 22, 34)
-              font:[NSFont monospacedDigitSystemFontOfSize:27 weight:NSFontWeightBold]
-             color:NSColor.labelColor alignment:NSTextAlignmentLeft];
-    [self drawProgressInRect:NSMakeRect(NSMinX(rect) + 11, NSMaxY(rect) - 13, NSWidth(rect) - 22, 6)
+             color:[self secondaryTextColor] alignment:NSTextAlignmentLeft];
+    [self drawText:model[@"percentText"] inRect:NSMakeRect(NSMinX(rect) + 12, NSMinY(rect) + 28, NSWidth(rect) - 24, 35)
+              font:[NSFont monospacedDigitSystemFontOfSize:27 weight:NSFontWeightSemibold]
+             color:[self primaryTextColor] alignment:NSTextAlignmentLeft];
+    [self drawProgressInRect:NSMakeRect(NSMinX(rect) + 12, NSMinY(rect) + 69, NSWidth(rect) - 24, 5)
+                      percent:[model[@"percent"] doubleValue]];
+    [self drawText:model[@"exactResetText"]
+            inRect:NSMakeRect(NSMinX(rect) + 12, NSMinY(rect) + 80, NSWidth(rect) - 24, 16)
+              font:[NSFont monospacedDigitSystemFontOfSize:9.5 weight:NSFontWeightMedium]
+             color:[self secondaryTextColor] alignment:NSTextAlignmentLeft];
+}
+
+- (void)drawSingleWindow:(NSDictionary *)model inWidth:(CGFloat)width {
+    [self drawText:model[@"percentText"] inRect:NSMakeRect(18, 56, 155, 61)
+              font:[NSFont monospacedDigitSystemFontOfSize:45 weight:NSFontWeightSemibold]
+             color:[self primaryTextColor] alignment:NSTextAlignmentLeft];
+    CGFloat detailsX = 183;
+    [self drawText:model[@"label"] inRect:NSMakeRect(detailsX, 60, width - detailsX - 18, 22)
+              font:[NSFont systemFontOfSize:14 weight:NSFontWeightSemibold]
+             color:[self primaryTextColor] alignment:NSTextAlignmentLeft];
+    [self drawText:_freshnessText inRect:NSMakeRect(detailsX, 85, width - detailsX - 18, 18)
+              font:[NSFont systemFontOfSize:11 weight:NSFontWeightMedium]
+             color:[self secondaryTextColor] alignment:NSTextAlignmentLeft];
+    [self drawText:_exactResetText inRect:NSMakeRect(detailsX, 106, width - detailsX - 18, 18)
+              font:[NSFont monospacedDigitSystemFontOfSize:10.5 weight:NSFontWeightMedium]
+             color:[self secondaryTextColor] alignment:NSTextAlignmentLeft];
+    [self drawProgressInRect:NSMakeRect(19, 135, width - 38, 5)
                       percent:[model[@"percent"] doubleValue]];
 }
 
 - (void)drawRect:(NSRect)dirtyRect {
     (void)dirtyRect;
     NSRect bounds = self.bounds;
+    NSBezierPath *backgroundPath = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(bounds, 0.5, 0.5)
+                                                                  xRadius:24 yRadius:24];
     NSColor *background = _desktopFocused
-        ? [NSColor.windowBackgroundColor colorWithAlphaComponent:0.94]
-        : [NSColor.windowBackgroundColor colorWithAlphaComponent:0.30];
+        ? [NSColor.windowBackgroundColor colorWithAlphaComponent:0.97]
+        : [NSColor colorWithSRGBRed:0.30 green:0.23 blue:0.77 alpha:0.82];
     [background setFill];
-    [[NSBezierPath bezierPathWithRoundedRect:bounds xRadius:24 yRadius:24] fill];
+    [backgroundPath fill];
+    backgroundPath.lineWidth = 1.0;
+    NSColor *border = _desktopFocused
+        ? [NSColor.labelColor colorWithAlphaComponent:0.08]
+        : [NSColor.whiteColor colorWithAlphaComponent:0.28];
+    [border setStroke];
+    [backgroundPath stroke];
     [self drawHeaderInWidth:NSWidth(bounds)];
 
     if (!_windowModels.count) {
-        [self drawText:@"--%" inRect:NSMakeRect(16, 57, NSWidth(bounds) - 32, 48)
-                  font:[NSFont monospacedDigitSystemFontOfSize:38 weight:NSFontWeightBold]
-                 color:NSColor.labelColor alignment:NSTextAlignmentLeft];
-        [self drawText:_emptyText inRect:NSMakeRect(16, 112, NSWidth(bounds) - 32, 38)
+        [self drawText:@"--%" inRect:NSMakeRect(16, 54, NSWidth(bounds) - 32, 48)
+                  font:[NSFont monospacedDigitSystemFontOfSize:36 weight:NSFontWeightBold]
+                 color:[self primaryTextColor] alignment:NSTextAlignmentLeft];
+        [self drawText:_emptyText inRect:NSMakeRect(16, 108, NSWidth(bounds) - 32, 38)
                   font:[NSFont systemFontOfSize:11 weight:NSFontWeightRegular]
-                 color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
+                 color:[self secondaryTextColor] alignment:NSTextAlignmentLeft];
         return;
     }
 
     if (_medium) {
-        CGFloat gap = 10.0;
-        CGFloat cardWidth = (NSWidth(bounds) - 32.0 - gap) / 2.0;
-        for (NSUInteger index = 0; index < MIN((NSUInteger)2, _windowModels.count); index++) {
-            NSRect card = NSMakeRect(16.0 + index * (cardWidth + gap), 49.0, cardWidth, 79.0);
-            [self drawCard:_windowModels[index] inRect:card];
+        if (_windowModels.count == 1) {
+            [self drawSingleWindow:_windowModels.firstObject inWidth:NSWidth(bounds)];
+        } else {
+            CGFloat gap = 8.0;
+            CGFloat cardWidth = (NSWidth(bounds) - 32.0 - gap) / 2.0;
+            for (NSUInteger index = 0; index < MIN((NSUInteger)2, _windowModels.count); index++) {
+                NSRect card = NSMakeRect(16.0 + index * (cardWidth + gap), 50.0, cardWidth, 103.0);
+                [self drawCard:_windowModels[index] inRect:card];
+            }
         }
-        [self drawText:_freshnessText inRect:NSMakeRect(17, 139, NSWidth(bounds) - 34, 20)
-                  font:[NSFont systemFontOfSize:10 weight:NSFontWeightRegular]
-                 color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
     } else {
         NSDictionary *model = _windowModels.firstObject;
-        [self drawText:model[@"percentText"] inRect:NSMakeRect(16, 48, NSWidth(bounds) - 32, 50)
-                  font:[NSFont monospacedDigitSystemFontOfSize:40 weight:NSFontWeightBold]
-                 color:NSColor.labelColor alignment:NSTextAlignmentLeft];
-        [self drawText:model[@"label"] inRect:NSMakeRect(17, 100, NSWidth(bounds) - 34, 18)
+        [self drawText:model[@"label"] inRect:NSMakeRect(17, 48, NSWidth(bounds) - 34, 18)
                   font:[NSFont systemFontOfSize:11 weight:NSFontWeightSemibold]
-                 color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
-        [self drawProgressInRect:NSMakeRect(16, 125, NSWidth(bounds) - 32, 7)
+                 color:[self secondaryTextColor] alignment:NSTextAlignmentLeft];
+        [self drawText:model[@"percentText"] inRect:NSMakeRect(16, 65, NSWidth(bounds) - 32, 48)
+                  font:[NSFont monospacedDigitSystemFontOfSize:37 weight:NSFontWeightSemibold]
+                 color:[self primaryTextColor] alignment:NSTextAlignmentLeft];
+        [self drawProgressInRect:NSMakeRect(17, 117, NSWidth(bounds) - 34, 5)
                           percent:[model[@"percent"] doubleValue]];
-        [self drawText:_freshnessText inRect:NSMakeRect(17, 141, NSWidth(bounds) - 34, 20)
+        [self drawText:_freshnessText inRect:NSMakeRect(17, 129, NSWidth(bounds) - 34, 15)
                   font:[NSFont systemFontOfSize:10 weight:NSFontWeightRegular]
-                 color:NSColor.secondaryLabelColor alignment:NSTextAlignmentLeft];
+                 color:[self secondaryTextColor] alignment:NSTextAlignmentLeft];
+        [self drawText:_exactResetText inRect:NSMakeRect(17, 145, NSWidth(bounds) - 34, 15)
+                  font:[NSFont monospacedDigitSystemFontOfSize:10 weight:NSFontWeightMedium]
+                 color:[self secondaryTextColor] alignment:NSTextAlignmentLeft];
     }
 }
 @end
@@ -662,6 +756,17 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     formatter.locale = NSLocale.currentLocale;
     formatter.timeZone = NSTimeZone.localTimeZone;
     formatter.dateStyle = NSDateFormatterMediumStyle;
+    formatter.timeStyle = NSDateFormatterShortStyle;
+    return [formatter stringFromDate:[NSDate dateWithTimeIntervalSince1970:resetAt]];
+}
+
+- (NSString *)compactResetTextForWindow:(NSDictionary *)window {
+    NSTimeInterval resetAt = [window[@"resetsAt"] doubleValue];
+    if (resetAt <= 0) return @"";
+    NSDateFormatter *formatter = [NSDateFormatter new];
+    formatter.locale = NSLocale.currentLocale;
+    formatter.timeZone = NSTimeZone.localTimeZone;
+    formatter.dateStyle = NSDateFormatterShortStyle;
     formatter.timeStyle = NSDateFormatterShortStyle;
     return [formatter stringFromDate:[NSDate dateWithTimeIntervalSince1970:resetAt]];
 }
@@ -1104,7 +1209,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 }
 
 - (NSSize)desktopWidgetWindowSize {
-    return _desktopWidgetSize == QGDesktopWidgetSizeMedium ? NSMakeSize(368, 174) : NSMakeSize(174, 174);
+    return _desktopWidgetSize == QGDesktopWidgetSizeMedium ? NSMakeSize(344, 164) : NSMakeSize(164, 164);
 }
 
 - (NSRect)defaultDesktopWidgetFrame {
@@ -1132,6 +1237,8 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSString *savedFrame = [NSUserDefaults.standardUserDefaults stringForKey:QGDesktopWidgetFrameKey];
     if (savedFrame.length) {
         NSRect candidate = NSRectFromString(savedFrame);
+        candidate.origin.x = NSMaxX(candidate) - size.width;
+        candidate.origin.y = NSMaxY(candidate) - size.height;
         candidate.size = size;
         if ([self desktopWidgetFrameIsUsable:candidate]) frame = candidate;
     }
@@ -1152,19 +1259,25 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
         NSWindowCollectionBehaviorStationary | NSWindowCollectionBehaviorFullScreenAuxiliary |
         NSWindowCollectionBehaviorIgnoresCycle;
 
-    _desktopWidgetEffectView = [[NSVisualEffectView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
-    _desktopWidgetEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    _desktopWidgetEffectView.wantsLayer = YES;
-    _desktopWidgetEffectView.layer.cornerRadius = 24.0;
-    _desktopWidgetEffectView.layer.masksToBounds = YES;
-    _desktopWidgetPanel.contentView = _desktopWidgetEffectView;
+    NSView *container = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
+    container.wantsLayer = YES;
+    container.layer.cornerRadius = 24.0;
+    container.layer.masksToBounds = YES;
+    _desktopWidgetPanel.contentView = container;
 
-    _desktopWidgetView = [[QGDesktopWidgetView alloc] initWithFrame:_desktopWidgetEffectView.bounds];
+    _desktopWidgetEffectView = [[NSVisualEffectView alloc] initWithFrame:container.bounds];
+    _desktopWidgetEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    _desktopWidgetEffectView.material = NSVisualEffectMaterialHUDWindow;
+    _desktopWidgetEffectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+    _desktopWidgetEffectView.state = NSVisualEffectStateActive;
+    [container addSubview:_desktopWidgetEffectView];
+
+    _desktopWidgetView = [[QGDesktopWidgetView alloc] initWithFrame:container.bounds];
     _desktopWidgetView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     _desktopWidgetView.medium = _desktopWidgetSize == QGDesktopWidgetSizeMedium;
     _desktopWidgetView.emptyText = QGL(@"widget.noData");
     [_desktopWidgetView setAccessibilityLabel:QGL(@"widget.accessibility")];
-    [_desktopWidgetEffectView addSubview:_desktopWidgetView];
+    [container addSubview:_desktopWidgetView];
     [self updateDesktopWidgetAppearance];
     [self refreshDesktopWidget];
 }
@@ -1229,9 +1342,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSString *frontmostID = NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier.lowercaseString;
     BOOL desktopFocused = [frontmostID isEqualToString:@"com.apple.finder"];
     _desktopWidgetView.desktopFocused = desktopFocused;
-    _desktopWidgetEffectView.material = desktopFocused ? NSVisualEffectMaterialWindowBackground : NSVisualEffectMaterialPopover;
-    _desktopWidgetEffectView.blendingMode = desktopFocused ? NSVisualEffectBlendingModeWithinWindow : NSVisualEffectBlendingModeBehindWindow;
-    _desktopWidgetEffectView.state = NSVisualEffectStateActive;
+    _desktopWidgetEffectView.alphaValue = desktopFocused ? 0.0 : 0.18;
 }
 
 - (void)refreshDesktopWidget {
@@ -1255,12 +1366,16 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
         [models addObject:@{
             @"label": [self windowLabel:window],
             @"percent": window[@"remainingPercent"] ?: @0,
-            @"percentText": [self percentageString:[window[@"remainingPercent"] doubleValue]]
+            @"percentText": [self percentageString:[window[@"remainingPercent"] doubleValue]],
+            @"exactResetText": [self compactResetTextForWindow:window]
         }];
         if (models.count == 2) break;
     }
     _desktopWidgetView.windowModels = models;
     _desktopWidgetView.emptyText = QGL(@"widget.noData");
+    _desktopWidgetView.stale = models.count > 0 && (self.dataIsStale || _syncState == QGSyncStateFailed);
+    _desktopWidgetView.toolTip = _desktopWidgetView.stale ? QGL(@"widget.cached") : nil;
+    _desktopWidgetView.exactResetText = _selectedWindow ? [self compactResetTextForWindow:_selectedWindow] : @"";
     if (_selectedWindow) {
         NSTimeInterval resetAt = [_selectedWindow[@"resetsAt"] doubleValue];
         if (resetAt > NSDate.date.timeIntervalSince1970) {

@@ -65,6 +65,8 @@
 "update.helperMissing" = "Falta el asistente de actualización en esta instalación.";
 "update.installFailed" = "No se pudo instalar la actualización. La copia actual no se modificó.";
 "menu.desktopWidget" = "Widget de escritorio";
+"widget.title" = "Cuota de Codex";
+"widget.cached" = "Anterior";
 "widget.show" = "Mostrar en el escritorio";
 "widget.hide" = "Ocultar del escritorio";
 "widget.sizeSmall" = "Pequeño";

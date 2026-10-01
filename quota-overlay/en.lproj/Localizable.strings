@@ -65,6 +65,8 @@
 "update.helperMissing" = "The update helper is missing from this installation.";
 "update.installFailed" = "The update could not be installed. Your current copy was not changed.";
 "menu.desktopWidget" = "Desktop Widget";
+"widget.title" = "Codex quota";
+"widget.cached" = "Cached";
 "widget.show" = "Show on Desktop";
 "widget.hide" = "Hide from Desktop";
 "widget.sizeSmall" = "Small";
