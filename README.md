@@ -45,6 +45,8 @@ The latest Universal 2 DMG and ZIP are available from [GitHub Releases](https://
 
 Public builds are currently ad-hoc signed and not Apple-notarized. On first launch, Control-click the app in Applications and choose **Open**. Never disable Gatekeeper.
 
+If you installed an earlier 1.0.1 build or the withdrawn 1.0.2/1.0.3 builds, install the current 1.0.1 package manually once. Those builds cannot automatically update to the consolidated version.
+
 ## Install from source
 
 ```bash

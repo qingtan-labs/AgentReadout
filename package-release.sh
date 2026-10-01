@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${0:A:h}"
-VERSION="${1:-1.0.3}"
+VERSION="${1:-1.0.1}"
 RELEASE_DIR="$ROOT_DIR/release"
 STAGING_DIR="$(mktemp -d)"
 APP_SOURCE="$ROOT_DIR/quota-overlay/build/Gauge for Codex.app"
