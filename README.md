@@ -81,7 +81,7 @@ flowchart LR
     B -->|app-server over stdio| C[Read-only rate-limit request]
     C --> D[Remaining percentage and reset time]
     D --> E[macOS menu bar]
-    D --> F[Local App Group cache]
+    D --> F[Local preferences cache]
     F --> G[Small and medium WidgetKit widgets]
 ```
 
@@ -89,7 +89,7 @@ Gauge for Codex starts the `codex app-server --stdio` executable and requests `a
 
 ## Privacy
 
-Gauge for Codex does not operate an external service and does not send telemetry. It stores only normalized usage percentages, reset timestamps, display preferences, and the last successful refresh time in local UserDefaults/App Group storage. When update checks are enabled, it contacts only this project's public GitHub Releases API and downloads a release only when a newer version exists. The Codex component may communicate with OpenAI using the account already configured on your Mac. See [PRIVACY.md](PRIVACY.md).
+Gauge for Codex does not operate an external service and does not send telemetry. It stores only normalized usage percentages, reset timestamps, display preferences, and the last successful refresh time in local UserDefaults storage. When update checks are enabled, it contacts only this project's public GitHub Releases API and downloads a release only when a newer version exists. The Codex component may communicate with OpenAI using the account already configured on your Mac. See [PRIVACY.md](PRIVACY.md).
 
 ## Security and support
 

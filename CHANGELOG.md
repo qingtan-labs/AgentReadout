@@ -2,6 +2,12 @@
 
 All notable changes are documented here.
 
+## 1.0.2 - 2026-10-01
+
+- Fixed desktop-widget data access for public ad-hoc-signed builds by reading the host app's local preference domain directly.
+- Removed the nonfunctional App Group dependency and its repeated preference-write errors.
+- Kept immediate WidgetKit timeline reloads after quota refreshes.
+
 ## 1.0.1 - 2026-10-01
 
 - Added native small and medium desktop widgets for macOS 14 or later.

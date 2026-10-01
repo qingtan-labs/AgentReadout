@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import WidgetKit
 
-private let appGroupIdentifier = "group.com.qingtanlabs.gaugeforcodex"
+private let hostPreferencesIdentifier = "com.qingtanlabs.gaugeforcodex"
 private let widgetKind = "com.qingtanlabs.gaugeforcodex.usage"
 
 private struct QuotaWindow: Identifiable {
@@ -63,7 +63,7 @@ private struct GaugeProvider: TimelineProvider {
     }
 
     private func loadEntry() -> GaugeEntry {
-        let defaults = UserDefaults(suiteName: appGroupIdentifier)
+        let defaults = UserDefaults(suiteName: hostPreferencesIdentifier)
         let rawWindows = defaults?.array(forKey: "QuotaWindows") as? [[String: Any]] ?? []
         let windows = rawWindows.enumerated().compactMap { index, raw -> QuotaWindow? in
             guard let remaining = number(raw["remainingPercent"]) else { return nil }

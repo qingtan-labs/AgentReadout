@@ -18,7 +18,6 @@ static NSString * const QGLastSyncKey = @"LastSuccessfulSync";
 static NSString * const QGDisplayModeKey = @"DisplayMode";
 static NSString * const QGAutomaticUpdateChecksKey = @"AutomaticUpdateChecks";
 static NSString * const QGLastUpdateCheckKey = @"LastUpdateCheck";
-static NSString * const QGAppGroupIdentifier = @"group.com.qingtanlabs.gaugeforcodex";
 static NSString * const QGReleaseAPIURL = @"https://api.github.com/repos/qingtan-labs/GaugeForCodex/releases/latest";
 static NSTimeInterval const QGAutomaticUpdateInterval = 24.0 * 60.0 * 60.0;
 
@@ -659,10 +658,6 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
     [self migrateLegacyDefaultsIfNeeded];
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     NSArray *stored = [defaults arrayForKey:QGWindowsKey];
-    if (!stored.count) {
-        NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:QGAppGroupIdentifier];
-        stored = [shared arrayForKey:QGWindowsKey];
-    }
     NSMutableArray<NSDictionary *> *valid = [NSMutableArray array];
     for (id item in stored) {
         if (![item isKindOfClass:NSDictionary.class]) continue;
@@ -693,10 +688,7 @@ typedef NS_ENUM(NSInteger, QGDisplayMode) {
 }
 
 - (void)publishWidgetSnapshot {
-    NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:QGAppGroupIdentifier];
-    if (_quotaWindows.count) [shared setObject:_quotaWindows forKey:QGWindowsKey];
-    if (_lastSuccessfulSync) [shared setDouble:_lastSuccessfulSync.timeIntervalSince1970 forKey:QGLastSyncKey];
-    [shared synchronize];
+    [NSUserDefaults.standardUserDefaults synchronize];
 #if QG_WIDGETKIT_BRIDGE
     [QGWidgetBridge reloadAllTimelines];
 #endif

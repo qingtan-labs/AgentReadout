@@ -81,7 +81,7 @@ flowchart LR
     B -->|app-server 标准输入输出| C[只读额度请求]
     C --> D[剩余百分比与重置时间]
     D --> E[macOS 菜单栏]
-    D --> F[本机 App Group 缓存]
+    D --> F[本机偏好设置缓存]
     F --> G[小号与中号 WidgetKit 组件]
 ```
 
@@ -89,7 +89,7 @@ Gauge for Codex 会短暂启动 `codex app-server --stdio`，请求 `account/rat
 
 ## 隐私
 
-Gauge for Codex 不运营外部服务，也不发送遥测。程序只在本机 UserDefaults/App Group 中保存归一化后的额度百分比、重置时间戳、显示偏好和最后成功同步时间。启用更新检查后，它只会访问本项目公开的 GitHub Releases API；仅在发现新版本时下载发布文件。Codex 组件可能使用你已在本机配置的账号与 OpenAI 通信。详见 [PRIVACY.md](PRIVACY.md)。
+Gauge for Codex 不运营外部服务，也不发送遥测。程序只在本机 UserDefaults 中保存归一化后的额度百分比、重置时间戳、显示偏好和最后成功同步时间。启用更新检查后，它只会访问本项目公开的 GitHub Releases API；仅在发现新版本时下载发布文件。Codex 组件可能使用你已在本机配置的账号与 OpenAI 通信。详见 [PRIVACY.md](PRIVACY.md)。
 
 ## 项目文档
 

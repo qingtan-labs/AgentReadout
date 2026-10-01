@@ -139,9 +139,9 @@ fi
 # signed until a Developer ID/notarization identity is configured.
 codesign --force --sign - "$HELPERS_DIR/GaugeForCodexUpdater"
 if (( BUILD_WIDGET )); then
-  codesign --force --sign - --entitlements "$WIDGET_SOURCE_DIR/GaugeForCodexWidget.entitlements" "$WIDGET_DIR"
+  codesign --force --sign - "$WIDGET_DIR"
 fi
-codesign --force --sign - --entitlements "$ROOT_DIR/GaugeForCodex.entitlements" "$APP_DIR"
+codesign --force --sign - "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR"
 lipo "$MACOS_DIR/GaugeForCodex" -verify_arch arm64 x86_64
 if (( BUILD_WIDGET )); then
