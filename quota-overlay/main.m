@@ -407,26 +407,26 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 }
 
 - (BOOL)usesSystemWidgetSurface {
-    return NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+    return _desktopFocused || NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
 }
 
 - (NSColor *)primaryTextColor {
     if ([self usesSystemWidgetSurface]) return NSColor.labelColor;
-    return _prefersLightText ? NSColor.whiteColor
+    return _prefersLightText ? [NSColor colorWithWhite:0.92 alpha:0.94]
         : [NSColor colorWithSRGBRed:0.08 green:0.14 blue:0.12 alpha:1.0];
 }
 
 - (NSColor *)secondaryTextColor {
     if ([self usesSystemWidgetSurface]) return NSColor.secondaryLabelColor;
-    return _prefersLightText ? [NSColor.whiteColor colorWithAlphaComponent:0.94]
+    return _prefersLightText ? [NSColor colorWithWhite:0.90 alpha:0.83]
         : [NSColor colorWithSRGBRed:0.09 green:0.15 blue:0.13 alpha:1.0];
 }
 
 - (NSShadow *)textShadow {
     NSShadow *shadow = [NSShadow new];
     if (_prefersLightText && ![self usesSystemWidgetSurface]) {
-        shadow.shadowColor = [NSColor.blackColor colorWithAlphaComponent:0.24];
-        shadow.shadowBlurRadius = 2.0;
+        shadow.shadowColor = [NSColor.blackColor colorWithAlphaComponent:0.13];
+        shadow.shadowBlurRadius = 1.5;
         shadow.shadowOffset = NSMakeSize(0, -1);
     }
     return shadow;
@@ -466,7 +466,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
                                                             endingColor:NSColor.systemGreenColor];
         [gradient drawInBezierPath:fillPath angle:0.0];
     } else if (_prefersLightText) {
-        [[NSColor.whiteColor colorWithAlphaComponent:0.92] setFill];
+        [[NSColor colorWithWhite:0.92 alpha:0.9] setFill];
         [fillPath fill];
     } else {
         [[NSColor colorWithSRGBRed:0.10 green:0.30 blue:0.27 alpha:0.88] setFill];
@@ -511,7 +511,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
                       font:[NSFont systemFontOfSize:9 weight:NSFontWeightSemibold]
                      color:[self secondaryTextColor] alignment:NSTextAlignmentRight];
         } else {
-            NSColor *indicator = _prefersLightText
+            NSColor *indicator = _prefersLightText && ![self usesSystemWidgetSurface]
                 ? [NSColor colorWithSRGBRed:1.0 green:0.82 blue:0.48 alpha:1.0]
                 : [NSColor colorWithSRGBRed:0.60 green:0.34 blue:0.02 alpha:1.0];
             [indicator setFill];
@@ -565,9 +565,11 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSRect bounds = self.bounds;
     NSBezierPath *backgroundPath = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(bounds, 0.5, 0.5)
                                                                   xRadius:24 yRadius:24];
-    // Keep the wallpaper visible, with just enough contrast for either text color.
+    // Finder focus uses the same opaque surface as desktop system widgets;
+    // otherwise the wallpaper remains visible through a gentle contrast scrim.
     NSColor *background = [self usesSystemWidgetSurface]
-        ? NSColor.windowBackgroundColor
+        ? (_desktopFocused && ![self usesDarkWidgetAppearance]
+            ? NSColor.whiteColor : NSColor.windowBackgroundColor)
         : _prefersLightText ? [NSColor.blackColor colorWithAlphaComponent:0.14]
                             : [NSColor.whiteColor colorWithAlphaComponent:0.22];
     [background setFill];
@@ -1476,8 +1478,10 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     BOOL desktopFocused = [frontmostID isEqualToString:@"com.apple.finder"];
     _desktopWidgetView.desktopFocused = desktopFocused;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
-    _desktopWidgetView.prefersLightText = QGWallpaperPrefersLightText(_desktopWidgetPanel.screen,
-                                                                    desktopFocused || [_desktopWidgetView usesDarkWidgetAppearance]);
+    if (!desktopFocused && !reduceTransparency) {
+        _desktopWidgetView.prefersLightText = QGWallpaperPrefersLightText(_desktopWidgetPanel.screen,
+                                                                        [_desktopWidgetView usesDarkWidgetAppearance]);
+    }
     _desktopWidgetEffectView.alphaValue = (desktopFocused || reduceTransparency) ? 0.0 : 0.12;
 }
 
