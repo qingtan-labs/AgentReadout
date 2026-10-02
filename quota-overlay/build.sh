@@ -72,7 +72,7 @@ if (( SDK_MAJOR >= 14 )); then
   cp "$WIDGET_SOURCE_DIR/Info.plist" "$WIDGET_APP_DIR/Contents/Info.plist"
   for arch in arm64 x86_64; do
     xcrun swiftc \
-      -O -parse-as-library -application-extension \
+      -O -swift-version 6 -parse-as-library -application-extension \
       -target "${arch}-apple-macos14.0" \
       -sdk "$WIDGET_SDK" \
       -module-name GaugeForCodexWidget \
