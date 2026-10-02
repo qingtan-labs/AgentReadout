@@ -1,6 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <CommonCrypto/CommonDigest.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <ImageIO/ImageIO.h>
 #import <QuartzCore/QuartzCore.h>
 #import "QGWidgetServer.h"
 #import <math.h>
@@ -32,6 +33,61 @@ static BOOL QGNativeWidgetAvailable(void) {
         return [NSFileManager.defaultManager fileExistsAtPath:extensionPath];
     }
     return NO;
+}
+
+static double QGLinearColorComponent(double value) {
+    return value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4);
+}
+
+static BOOL QGPrefersLightTextForRGB(double red, double green, double blue) {
+    double luminance = 0.2126 * QGLinearColorComponent(red)
+        + 0.7152 * QGLinearColorComponent(green)
+        + 0.0722 * QGLinearColorComponent(blue);
+    return luminance < 0.27;
+}
+
+static BOOL QGWallpaperPrefersLightText(NSScreen *screen, BOOL fallback) {
+    if (!screen) return fallback;
+    // Desktop widgets sit over the wallpaper, whose brightness is independent of
+    // the app's light/dark appearance. Sample a tiny thumbnail of this screen's
+    // wallpaper so saturated dark colors use the same light typography as the
+    // neighboring system widgets, while pale wallpapers retain dark typography.
+    NSURL *url = [NSWorkspace.sharedWorkspace desktopImageURLForScreen:screen];
+    if (!url) return fallback;
+    CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)url, NULL);
+    if (!source) return fallback;
+    NSDictionary *options = @{
+        (__bridge NSString *)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+        (__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize: @16
+    };
+    CGImageRef image = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+    CFRelease(source);
+    if (!image) return fallback;
+
+    enum { sampleSize = 12 };
+    unsigned char pixels[sampleSize * sampleSize * 4] = {0};
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(pixels, sampleSize, sampleSize, 8, sampleSize * 4,
+                                                colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    CGColorSpaceRelease(colorSpace);
+    if (!context) {
+        CGImageRelease(image);
+        return fallback;
+    }
+    CGContextDrawImage(context, CGRectMake(0, 0, sampleSize, sampleSize), image);
+    CGContextRelease(context);
+    CGImageRelease(image);
+
+    double red = 0, green = 0, blue = 0, count = 0;
+    for (NSUInteger index = 0; index < sampleSize * sampleSize; index++) {
+        const unsigned char *pixel = pixels + index * 4;
+        if (pixel[3] < 128) continue;
+        red += pixel[0] / 255.0;
+        green += pixel[1] / 255.0;
+        blue += pixel[2] / 255.0;
+        count += 1.0;
+    }
+    return count > 0 ? QGPrefersLightTextForRGB(red / count, green / count, blue / count) : fallback;
 }
 
 static NSNumber *QGNumber(id value) {
@@ -237,8 +293,14 @@ static BOOL QGRunSelfTests(void) {
     BOOL localizationPassed = ![QGL(@"menu.refresh") isEqualToString:@"menu.refresh"];
     fprintf(stdout, "%s localization resources\n", localizationPassed ? "PASS" : "FAIL");
     if (!localizationPassed) failures++;
+    BOOL violetContrastPassed = QGPrefersLightTextForRGB(0.71, 0.31, 0.84);
+    fprintf(stdout, "%s light text on violet wallpaper\n", violetContrastPassed ? "PASS" : "FAIL");
+    if (!violetContrastPassed) failures++;
+    BOOL paleContrastPassed = !QGPrefersLightTextForRGB(0.96, 0.88, 0.82);
+    fprintf(stdout, "%s dark text on pale wallpaper\n", paleContrastPassed ? "PASS" : "FAIL");
+    if (!paleContrastPassed) failures++;
     fprintf(stdout, "%lu tests, %lu failures\n",
-            (unsigned long)(cases.count + versionCases.count + 1), (unsigned long)failures);
+            (unsigned long)(cases.count + versionCases.count + 3), (unsigned long)failures);
     return failures == 0;
 }
 
@@ -320,7 +382,9 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 @property (nonatomic, copy) NSString *emptyText;
 @property (nonatomic) BOOL medium;
 @property (nonatomic) BOOL desktopFocused;
+@property (nonatomic) BOOL prefersLightText;
 @property (nonatomic) BOOL stale;
+- (BOOL)usesDarkWidgetAppearance;
 @end
 
 @implementation QGDesktopWidgetView
@@ -332,6 +396,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 - (void)setEmptyText:(NSString *)value { _emptyText = [value copy]; [self setNeedsDisplay:YES]; }
 - (void)setMedium:(BOOL)value { _medium = value; [self setNeedsDisplay:YES]; }
 - (void)setDesktopFocused:(BOOL)value { _desktopFocused = value; [self setNeedsDisplay:YES]; }
+- (void)setPrefersLightText:(BOOL)value { _prefersLightText = value; [self setNeedsDisplay:YES]; }
 - (void)setStale:(BOOL)value { _stale = value; [self setNeedsDisplay:YES]; }
 - (void)viewDidChangeEffectiveAppearance { [super viewDidChangeEffectiveAppearance]; [self setNeedsDisplay:YES]; }
 
@@ -342,19 +407,29 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 }
 
 - (BOOL)usesSystemWidgetSurface {
-    return _desktopFocused || NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+    return NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
 }
 
 - (NSColor *)primaryTextColor {
     if ([self usesSystemWidgetSurface]) return NSColor.labelColor;
-    return [self usesDarkWidgetAppearance] ? NSColor.whiteColor
+    return _prefersLightText ? NSColor.whiteColor
         : [NSColor colorWithSRGBRed:0.08 green:0.14 blue:0.12 alpha:1.0];
 }
 
 - (NSColor *)secondaryTextColor {
     if ([self usesSystemWidgetSurface]) return NSColor.secondaryLabelColor;
-    return [self usesDarkWidgetAppearance] ? [NSColor.whiteColor colorWithAlphaComponent:0.94]
+    return _prefersLightText ? [NSColor.whiteColor colorWithAlphaComponent:0.94]
         : [NSColor colorWithSRGBRed:0.09 green:0.15 blue:0.13 alpha:1.0];
+}
+
+- (NSShadow *)textShadow {
+    NSShadow *shadow = [NSShadow new];
+    if (_prefersLightText && ![self usesSystemWidgetSurface]) {
+        shadow.shadowColor = [NSColor.blackColor colorWithAlphaComponent:0.24];
+        shadow.shadowBlurRadius = 2.0;
+        shadow.shadowOffset = NSMakeSize(0, -1);
+    }
+    return shadow;
 }
 
 - (void)drawText:(NSString *)text inRect:(NSRect)rect font:(NSFont *)font color:(NSColor *)color
@@ -366,7 +441,8 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSDictionary *attributes = @{
         NSFontAttributeName: font,
         NSForegroundColorAttributeName: color,
-        NSParagraphStyleAttributeName: style
+        NSParagraphStyleAttributeName: style,
+        NSShadowAttributeName: [self textShadow]
     };
     [text drawInRect:rect withAttributes:attributes];
 }
@@ -374,7 +450,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 - (void)drawProgressInRect:(NSRect)rect percent:(double)percent {
     NSColor *trackColor = [self usesSystemWidgetSurface]
         ? [NSColor.labelColor colorWithAlphaComponent:0.13]
-        : [self usesDarkWidgetAppearance]
+        : _prefersLightText
             ? [NSColor.whiteColor colorWithAlphaComponent:0.26]
             : [NSColor colorWithWhite:0.05 alpha:0.15];
     [trackColor setFill];
@@ -389,7 +465,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
         NSGradient *gradient = [[NSGradient alloc] initWithStartingColor:NSColor.systemCyanColor
                                                             endingColor:NSColor.systemGreenColor];
         [gradient drawInBezierPath:fillPath angle:0.0];
-    } else if ([self usesDarkWidgetAppearance]) {
+    } else if (_prefersLightText) {
         [[NSColor.whiteColor colorWithAlphaComponent:0.92] setFill];
         [fillPath fill];
     } else {
@@ -435,7 +511,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
                       font:[NSFont systemFontOfSize:9 weight:NSFontWeightSemibold]
                      color:[self secondaryTextColor] alignment:NSTextAlignmentRight];
         } else {
-            NSColor *indicator = [self usesDarkWidgetAppearance]
+            NSColor *indicator = _prefersLightText
                 ? [NSColor colorWithSRGBRed:1.0 green:0.82 blue:0.48 alpha:1.0]
                 : [NSColor colorWithSRGBRed:0.60 green:0.34 blue:0.02 alpha:1.0];
             [indicator setFill];
@@ -448,7 +524,8 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSBezierPath *card = [NSBezierPath bezierPathWithRoundedRect:rect xRadius:15 yRadius:15];
     NSColor *fill = [self usesSystemWidgetSurface]
         ? [NSColor.labelColor colorWithAlphaComponent:0.055]
-        : [NSColor.blackColor colorWithAlphaComponent:0.055];
+        : _prefersLightText ? [NSColor.whiteColor colorWithAlphaComponent:0.08]
+                            : [NSColor.blackColor colorWithAlphaComponent:0.055];
     [fill setFill];
     [card fill];
     [self drawText:model[@"label"] inRect:NSMakeRect(NSMinX(rect) + 12, NSMinY(rect) + 9, NSWidth(rect) - 24, 17)
@@ -488,16 +565,18 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSRect bounds = self.bounds;
     NSBezierPath *backgroundPath = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(bounds, 0.5, 0.5)
                                                                   xRadius:24 yRadius:24];
-    // A subtle neutral scrim preserves the current wallpaper color instead of washing it out.
+    // Keep the wallpaper visible, with just enough contrast for either text color.
     NSColor *background = [self usesSystemWidgetSurface]
         ? NSColor.windowBackgroundColor
-        : [NSColor.blackColor colorWithAlphaComponent:[self usesDarkWidgetAppearance] ? 0.58 : 0.16];
+        : _prefersLightText ? [NSColor.blackColor colorWithAlphaComponent:0.14]
+                            : [NSColor.whiteColor colorWithAlphaComponent:0.22];
     [background setFill];
     [backgroundPath fill];
     backgroundPath.lineWidth = 1.0;
     NSColor *border = [self usesSystemWidgetSurface]
         ? [NSColor.labelColor colorWithAlphaComponent:0.08]
-        : [NSColor.whiteColor colorWithAlphaComponent:0.18];
+        : _prefersLightText ? [NSColor.whiteColor colorWithAlphaComponent:0.22]
+                            : [NSColor.blackColor colorWithAlphaComponent:0.11];
     [border setStroke];
     [backgroundPath stroke];
     [self drawHeaderInWidth:NSWidth(bounds)];
@@ -1397,6 +1476,8 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     BOOL desktopFocused = [frontmostID isEqualToString:@"com.apple.finder"];
     _desktopWidgetView.desktopFocused = desktopFocused;
     BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+    _desktopWidgetView.prefersLightText = QGWallpaperPrefersLightText(_desktopWidgetPanel.screen,
+                                                                    desktopFocused || [_desktopWidgetView usesDarkWidgetAppearance]);
     _desktopWidgetEffectView.alphaValue = (desktopFocused || reduceTransparency) ? 0.0 : 0.12;
 }
 
