@@ -111,6 +111,11 @@ static uint16_t const QGWidgetPort = 38429;
         }
         int enabled = 1;
         setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &enabled, sizeof(enabled));
+        int clientFlags = fcntl(client, F_GETFL, 0);
+        if (clientFlags < 0 || fcntl(client, F_SETFL, clientFlags & ~O_NONBLOCK) < 0) {
+            close(client);
+            continue;
+        }
         struct timeval timeout = {.tv_sec = 1, .tv_usec = 0};
         setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         setsockopt(client, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
