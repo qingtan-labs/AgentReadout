@@ -28,7 +28,7 @@ The original icon combines a geometric **C** for Codex compatibility, a **`>_`**
 - Refreshes at launch, every 60 seconds, when the Mac wakes, and after a reset.
 - Preserves the last successful value during transient failures and marks stale data.
 - Includes a percentage-only compact mode and a manual fallback.
-- Adds draggable small and medium desktop widgets on macOS 12 or later, with exact reset times and a light desktop / wallpaper-tinted material appearance. Choose **Desktop Widget → Show on Desktop** from the menu-bar menu; this in-app widget is not listed in macOS's Add Widgets gallery.
+- Adds draggable small and medium desktop widgets on macOS 12 or later, with exact reset times, a system-colored desktop surface, and a neutral translucent material that lets wallpaper colors show through. Choose **Desktop Widget → Show on Desktop** from the menu-bar menu; this in-app widget is not listed in macOS's Add Widgets gallery.
 - Checks GitHub Releases once a day by default, with an off switch and a manual check. Verified updates can download, replace the writable app copy, and relaunch automatically.
 - Runs natively on Apple silicon and Intel Macs without Electron.
 - Contains no analytics, advertising, account system, or telemetry.

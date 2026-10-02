@@ -325,12 +325,26 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 - (void)setStale:(BOOL)value { _stale = value; [self setNeedsDisplay:YES]; }
 - (void)viewDidChangeEffectiveAppearance { [super viewDidChangeEffectiveAppearance]; [self setNeedsDisplay:YES]; }
 
+- (BOOL)usesDarkWidgetAppearance {
+    NSString *name = [self.effectiveAppearance bestMatchFromAppearancesWithNames:
+                      @[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+    return [name isEqualToString:NSAppearanceNameDarkAqua];
+}
+
+- (BOOL)usesSystemWidgetSurface {
+    return _desktopFocused || NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+}
+
 - (NSColor *)primaryTextColor {
-    return _desktopFocused ? NSColor.labelColor : NSColor.whiteColor;
+    if ([self usesSystemWidgetSurface]) return NSColor.labelColor;
+    return [self usesDarkWidgetAppearance] ? NSColor.whiteColor
+        : [NSColor colorWithSRGBRed:0.08 green:0.14 blue:0.12 alpha:1.0];
 }
 
 - (NSColor *)secondaryTextColor {
-    return _desktopFocused ? NSColor.secondaryLabelColor : [NSColor.whiteColor colorWithAlphaComponent:0.96];
+    if ([self usesSystemWidgetSurface]) return NSColor.secondaryLabelColor;
+    return [self usesDarkWidgetAppearance] ? [NSColor.whiteColor colorWithAlphaComponent:0.94]
+        : [NSColor colorWithSRGBRed:0.09 green:0.15 blue:0.13 alpha:1.0];
 }
 
 - (void)drawText:(NSString *)text inRect:(NSRect)rect font:(NSFont *)font color:(NSColor *)color
@@ -348,9 +362,11 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 }
 
 - (void)drawProgressInRect:(NSRect)rect percent:(double)percent {
-    NSColor *trackColor = _desktopFocused
+    NSColor *trackColor = [self usesSystemWidgetSurface]
         ? [NSColor.labelColor colorWithAlphaComponent:0.13]
-        : [NSColor.whiteColor colorWithAlphaComponent:0.26];
+        : [self usesDarkWidgetAppearance]
+            ? [NSColor.whiteColor colorWithAlphaComponent:0.26]
+            : [NSColor colorWithWhite:0.05 alpha:0.15];
     [trackColor setFill];
     [[NSBezierPath bezierPathWithRoundedRect:rect xRadius:NSHeight(rect) / 2.0 yRadius:NSHeight(rect) / 2.0] fill];
     if (percent <= 0.0) return;
@@ -359,12 +375,15 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSBezierPath *fillPath = [NSBezierPath bezierPathWithRoundedRect:fill
                                                              xRadius:NSHeight(fill) / 2.0
                                                              yRadius:NSHeight(fill) / 2.0];
-    if (_desktopFocused) {
+    if ([self usesSystemWidgetSurface]) {
         NSGradient *gradient = [[NSGradient alloc] initWithStartingColor:NSColor.systemCyanColor
                                                             endingColor:NSColor.systemGreenColor];
         [gradient drawInBezierPath:fillPath angle:0.0];
-    } else {
+    } else if ([self usesDarkWidgetAppearance]) {
         [[NSColor.whiteColor colorWithAlphaComponent:0.92] setFill];
+        [fillPath fill];
+    } else {
+        [[NSColor colorWithSRGBRed:0.10 green:0.30 blue:0.27 alpha:0.88] setFill];
         [fillPath fill];
     }
 }
@@ -375,9 +394,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSAffineTransform *markTransform = [NSAffineTransform transform];
     [markTransform translateXBy:15.0 yBy:14.0];
     [markTransform scaleBy:scale];
-    NSColor *markColor = _desktopFocused
-        ? [NSColor colorWithSRGBRed:18.0 / 255.0 green:37.0 / 255.0 blue:26.0 / 255.0 alpha:1.0]
-        : [NSColor.whiteColor colorWithAlphaComponent:0.96];
+    NSColor *markColor = [self primaryTextColor];
     [markColor setStroke];
     NSBezierPath *ring = [NSBezierPath bezierPath];
     [ring appendBezierPathWithArcWithCenter:NSMakePoint(12, 12) radius:8.5
@@ -408,9 +425,9 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
                       font:[NSFont systemFontOfSize:9 weight:NSFontWeightSemibold]
                      color:[self secondaryTextColor] alignment:NSTextAlignmentRight];
         } else {
-            NSColor *indicator = _desktopFocused
-                ? [NSColor colorWithSRGBRed:0.60 green:0.34 blue:0.02 alpha:1.0]
-                : [NSColor colorWithSRGBRed:1.0 green:0.82 blue:0.48 alpha:1.0];
+            NSColor *indicator = [self usesDarkWidgetAppearance]
+                ? [NSColor colorWithSRGBRed:1.0 green:0.82 blue:0.48 alpha:1.0]
+                : [NSColor colorWithSRGBRed:0.60 green:0.34 blue:0.02 alpha:1.0];
             [indicator setFill];
             [[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(width - 20, 21, 6, 6)] fill];
         }
@@ -419,9 +436,9 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 
 - (void)drawCard:(NSDictionary *)model inRect:(NSRect)rect {
     NSBezierPath *card = [NSBezierPath bezierPathWithRoundedRect:rect xRadius:15 yRadius:15];
-    NSColor *fill = _desktopFocused
+    NSColor *fill = [self usesSystemWidgetSurface]
         ? [NSColor.labelColor colorWithAlphaComponent:0.055]
-        : [NSColor.whiteColor colorWithAlphaComponent:0.11];
+        : [NSColor.blackColor colorWithAlphaComponent:0.055];
     [fill setFill];
     [card fill];
     [self drawText:model[@"label"] inRect:NSMakeRect(NSMinX(rect) + 12, NSMinY(rect) + 9, NSWidth(rect) - 24, 17)
@@ -461,15 +478,16 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSRect bounds = self.bounds;
     NSBezierPath *backgroundPath = [NSBezierPath bezierPathWithRoundedRect:NSInsetRect(bounds, 0.5, 0.5)
                                                                   xRadius:24 yRadius:24];
-    NSColor *background = _desktopFocused
-        ? [NSColor.windowBackgroundColor colorWithAlphaComponent:0.97]
-        : [NSColor colorWithSRGBRed:0.48 green:0.42 blue:0.89 alpha:0.82];
+    // A subtle neutral scrim preserves the current wallpaper color instead of washing it out.
+    NSColor *background = [self usesSystemWidgetSurface]
+        ? NSColor.windowBackgroundColor
+        : [NSColor.blackColor colorWithAlphaComponent:[self usesDarkWidgetAppearance] ? 0.58 : 0.16];
     [background setFill];
     [backgroundPath fill];
     backgroundPath.lineWidth = 1.0;
-    NSColor *border = _desktopFocused
+    NSColor *border = [self usesSystemWidgetSurface]
         ? [NSColor.labelColor colorWithAlphaComponent:0.08]
-        : [NSColor.whiteColor colorWithAlphaComponent:0.16];
+        : [NSColor.whiteColor colorWithAlphaComponent:0.18];
     [border setStroke];
     [backgroundPath stroke];
     [self drawHeaderInWidth:NSWidth(bounds)];
@@ -599,6 +617,8 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
                                                             name:NSWorkspaceDidWakeNotification object:nil];
     [NSWorkspace.sharedWorkspace.notificationCenter addObserver:self selector:@selector(activeApplicationChanged:)
                                                             name:NSWorkspaceDidActivateApplicationNotification object:nil];
+    [NSWorkspace.sharedWorkspace.notificationCenter addObserver:self selector:@selector(accessibilityDisplayOptionsChanged:)
+                                                            name:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification object:nil];
 
     __weak QGAppDelegate *weakSelf = self;
     _syncTimer = [NSTimer timerWithTimeInterval:60.0 repeats:YES block:^(NSTimer *timer) {
@@ -718,6 +738,12 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 - (void)activeApplicationChanged:(NSNotification *)notification {
     (void)notification;
     [self updateDesktopWidgetAppearance];
+}
+
+- (void)accessibilityDisplayOptionsChanged:(NSNotification *)notification {
+    (void)notification;
+    [self updateDesktopWidgetAppearance];
+    [_desktopWidgetView setNeedsDisplay:YES];
 }
 
 - (void)displayTimerFired {
@@ -1267,7 +1293,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 
     _desktopWidgetEffectView = [[NSVisualEffectView alloc] initWithFrame:container.bounds];
     _desktopWidgetEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    _desktopWidgetEffectView.material = NSVisualEffectMaterialHUDWindow;
+    _desktopWidgetEffectView.material = NSVisualEffectMaterialUnderWindowBackground;
     _desktopWidgetEffectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
     _desktopWidgetEffectView.state = NSVisualEffectStateActive;
     [container addSubview:_desktopWidgetEffectView];
@@ -1342,7 +1368,8 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     NSString *frontmostID = NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier.lowercaseString;
     BOOL desktopFocused = [frontmostID isEqualToString:@"com.apple.finder"];
     _desktopWidgetView.desktopFocused = desktopFocused;
-    _desktopWidgetEffectView.alphaValue = desktopFocused ? 0.0 : 0.18;
+    BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+    _desktopWidgetEffectView.alphaValue = (desktopFocused || reduceTransparency) ? 0.0 : 0.12;
 }
 
 - (void)refreshDesktopWidget {
