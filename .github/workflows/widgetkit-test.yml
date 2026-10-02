@@ -21,6 +21,8 @@ jobs:
       - name: Verify embedded extension
         run: |
           test -x "quota-overlay/build/Gauge for Codex.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/MacOS/GaugeForCodexWidget"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPointIdentifier' 'quota-overlay/build/Gauge for Codex.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/Info.plist')" = 'com.apple.widgetkit-extension'
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' 'quota-overlay/build/Gauge for Codex.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/Info.plist')" = '8'
           codesign --verify --deep --strict "quota-overlay/build/Gauge for Codex.app"
       - name: Archive test app
         run: ditto -c -k --sequesterRsrc --keepParent "quota-overlay/build/Gauge for Codex.app" widget-test.zip

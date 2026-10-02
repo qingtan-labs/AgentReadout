@@ -9,13 +9,14 @@ targets:
     deploymentTarget: "14.0"
     sources:
       - path: GaugeWidget.swift
-    info:
-      path: Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.qingtanlabs.gaugeforcodex.widget
         SWIFT_VERSION: "6.0"
         CODE_SIGN_ENTITLEMENTS: Widget.entitlements
+        INFOPLIST_FILE: Info.plist
         GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: 1.0.1
+        CURRENT_PROJECT_VERSION: 8
         SKIP_INSTALL: YES
     scheme: {}

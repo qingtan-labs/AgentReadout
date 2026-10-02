@@ -78,6 +78,11 @@ if (( SDK_MAJOR >= 14 )); then
     'ARCHS=arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO \
     build >/dev/null
   ditto "$BUILD_DIR/WidgetDerivedData/Build/Products/Release/GaugeForCodexWidget.appex" "$WIDGET_APP_DIR"
+  WIDGET_POINT="$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPointIdentifier' "$WIDGET_APP_DIR/Contents/Info.plist")"
+  [[ "$WIDGET_POINT" == 'com.apple.widgetkit-extension' ]] || { echo "Invalid WidgetKit extension metadata." >&2; exit 1; }
+  WIDGET_BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$WIDGET_APP_DIR/Contents/Info.plist")"
+  HOST_BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$CONTENTS_DIR/Info.plist")"
+  [[ "$WIDGET_BUILD" == "$HOST_BUILD" ]] || { echo "WidgetKit extension build version mismatch." >&2; exit 1; }
   plutil -lint "$WIDGET_APP_DIR/Contents/Info.plist"
   codesign --force --sign - --entitlements "$WIDGET_SOURCE_DIR/Widget.entitlements" "$WIDGET_APP_DIR"
   lipo "$WIDGET_APP_DIR/Contents/MacOS/GaugeForCodexWidget" -verify_arch arm64 x86_64
