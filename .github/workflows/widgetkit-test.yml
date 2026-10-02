@@ -1,0 +1,28 @@
+name: Native widget test
+
+on:
+  push:
+    branches:
+      - feature/native-widgetkit
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
+      - name: Build app and WidgetKit extension
+        run: ./quota-overlay/build.sh
+      - name: Verify embedded extension
+        run: |
+          test -x "quota-overlay/build/Gauge for Codex.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/MacOS/GaugeForCodexWidget"
+          codesign --verify --deep --strict "quota-overlay/build/Gauge for Codex.app"
+      - name: Archive test app
+        run: ditto -c -k --sequesterRsrc --keepParent "quota-overlay/build/Gauge for Codex.app" widget-test.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gauge-widget-test
+          path: widget-test.zip
