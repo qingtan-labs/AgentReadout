@@ -1,5 +1,6 @@
 .DS_Store
 *.xcuserstate
+quota-overlay/widget/*.xcodeproj/
 
 # Local build products
 **/build/

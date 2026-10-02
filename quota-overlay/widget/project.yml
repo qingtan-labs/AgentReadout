@@ -1,0 +1,21 @@
+name: GaugeForCodexWidget
+options:
+  minimumXcodeGenVersion: 2.40.0
+  createIntermediateGroups: true
+targets:
+  GaugeForCodexWidget:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: GaugeWidget.swift
+    info:
+      path: Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.qingtanlabs.gaugeforcodex.widget
+        SWIFT_VERSION: "6.0"
+        CODE_SIGN_ENTITLEMENTS: Widget.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+    scheme: {}

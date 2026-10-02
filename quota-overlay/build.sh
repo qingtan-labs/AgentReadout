@@ -67,20 +67,17 @@ done
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 SDK_MAJOR="${SDK_VERSION%%.*}"
 if (( SDK_MAJOR >= 14 )); then
-  WIDGET_SDK="$(xcrun --sdk macosx --show-sdk-path)"
-  mkdir -p "$WIDGET_APP_DIR/Contents/MacOS"
-  cp "$WIDGET_SOURCE_DIR/Info.plist" "$WIDGET_APP_DIR/Contents/Info.plist"
-  for arch in arm64 x86_64; do
-    xcrun swiftc \
-      -O -swift-version 6 -parse-as-library -application-extension \
-      -target "${arch}-apple-macos14.0" \
-      -sdk "$WIDGET_SDK" \
-      -module-name GaugeForCodexWidget \
-      "$WIDGET_SOURCE_DIR/GaugeWidget.swift" \
-      -o "$BUILD_DIR/GaugeForCodexWidget-$arch"
-  done
-  lipo -create "$BUILD_DIR/GaugeForCodexWidget-arm64" "$BUILD_DIR/GaugeForCodexWidget-x86_64" \
-    -output "$WIDGET_APP_DIR/Contents/MacOS/GaugeForCodexWidget"
+  command -v xcodegen >/dev/null || { echo "XcodeGen is required for native widget builds." >&2; exit 1; }
+  xcodegen generate --spec "$WIDGET_SOURCE_DIR/project.yml" --project "$WIDGET_SOURCE_DIR" >/dev/null
+  xcodebuild \
+    -project "$WIDGET_SOURCE_DIR/GaugeForCodexWidget.xcodeproj" \
+    -scheme GaugeForCodexWidget \
+    -configuration Release \
+    -derivedDataPath "$BUILD_DIR/WidgetDerivedData" \
+    -destination 'generic/platform=macOS' \
+    'ARCHS=arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO \
+    build >/dev/null
+  ditto "$BUILD_DIR/WidgetDerivedData/Build/Products/Release/GaugeForCodexWidget.appex" "$WIDGET_APP_DIR"
   plutil -lint "$WIDGET_APP_DIR/Contents/Info.plist"
   codesign --force --sign - --entitlements "$WIDGET_SOURCE_DIR/Widget.entitlements" "$WIDGET_APP_DIR"
   lipo "$WIDGET_APP_DIR/Contents/MacOS/GaugeForCodexWidget" -verify_arch arm64 x86_64
