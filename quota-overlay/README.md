@@ -10,7 +10,7 @@ Gauge for Codex is an independent native macOS menu bar utility that keeps Codex
 - Refreshes at launch, every 60 seconds, when the menu opens after becoming stale, after wake, and immediately after a reset.
 - Keeps the last successful value on transient failures and labels data older than five minutes as stale.
 - Offers a compact percentage-only mode when menu bar space is limited.
-- Includes draggable small and medium desktop widgets with Finder-aware system/material backgrounds.
+- Includes native small and medium WidgetKit desktop widgets on macOS 14+, plus the draggable floating widget on macOS 12–13 and as a legacy option.
 - Checks for releases daily by default, can be disabled, and supports manual or verified automatic installation.
 - Supports English, Simplified Chinese, Japanese, and Spanish.
 - Supports both Apple Silicon and Intel Macs running macOS 12 or later.
@@ -29,7 +29,7 @@ Gauge for Codex does not read browser cookies, conversation content, or password
     cd quota-overlay
     ./build.sh
 
-The build creates `build/Gauge for Codex.app`, validates localizations, runs parser tests, signs nested code ad hoc, and verifies Universal 2 architectures and signatures. The desktop widget is integrated into the menu-bar process, so no Apple Developer certificate or extension registration is required.
+The build creates `build/Gauge for Codex.app`, validates localizations, runs parser tests, signs nested code ad hoc, and verifies Universal 2 architectures and signatures. With full Xcode and XcodeGen it embeds a WidgetKit extension; with Command Line Tools alone it builds only the menu-bar app and floating-widget fallback. Published releases require the native extension. After installing the app, launch it once, then add the native widget from macOS **Edit Widgets**.
 
 ## Install for the current user
 

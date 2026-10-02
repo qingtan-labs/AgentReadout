@@ -28,7 +28,7 @@
 - 启动时、每 60 秒、Mac 唤醒后和额度重置后自动同步。
 - 临时同步失败时保留最后一次成功值，并明确标记过期数据。
 - 提供“仅百分比”紧凑模式和手动填写后备方案。
-- macOS 12 及以上支持可拖动的小号、中号桌面组件，显示准确重置时间，并随桌面焦点切换系统底色与透出壁纸颜色的中性半透明材质。请从菜单栏选择“桌面组件 → 显示在桌面”；这是应用内置组件，不会出现在 macOS 的“添加小组件”列表中。
+- macOS 14 及以上提供真正的 WidgetKit 小号、中号桌面组件。在桌面右键「编辑小组件」，搜索 **Gauge for Codex** 即可添加；底色与壁纸适配由 macOS 原生控制。macOS 12–13 保留可拖动的悬浮组件，新系统也可作为旧版选项使用。
 - 默认每天从 GitHub Releases 检查一次更新，可关闭也可手动检查；校验通过后可自动替换可写位置中的应用并重新启动。
 - 原生支持 Apple Silicon 与 Intel Mac，不使用 Electron。
 - 不包含分析、广告、账号系统或遥测。
@@ -37,7 +37,7 @@
 
 - macOS 12 Monterey 或更高版本。
 - 已安装并登录 Codex 或 ChatGPT 桌面应用；也支持标准路径下已登录的 Codex CLI。
-- 只有从源码构建时才需要 Xcode Command Line Tools。
+- 从源码构建原生 WidgetKit 组件需要完整 Xcode 和 XcodeGen。只有 Command Line Tools 时仍可构建菜单栏程序及旧版悬浮组件，但不包含原生组件。
 
 ## 下载
 
@@ -55,7 +55,7 @@ cd GaugeForCodex/quota-overlay
 ./install.sh
 ```
 
-安装脚本会构建 Universal 2 应用，将其安装到 `~/Applications/Gauge for Codex.app`，并注册当前用户的 LaunchAgent。如果检测到早期本地版 `CodexGauge`，脚本会停用其登录启动项，但不会删除旧文件。
+安装脚本会构建 Universal 2 应用，将其安装到 `~/Applications/Gauge for Codex.app`，并注册当前用户的 LaunchAgent。如果检测到早期本地版 `CodexGauge`，脚本会停用其登录启动项，但不会删除旧文件。构建原生组件需完整 Xcode 与 XcodeGen，否则仍可使用悬浮组件后备方案。
 
 只构建、不安装：
 
@@ -84,10 +84,12 @@ flowchart LR
     C --> D[剩余百分比与重置时间]
     D --> E[macOS 菜单栏]
     D --> F[本机偏好设置缓存]
-    D --> G[小号与中号桌面组件]
+    D --> G[原生 WidgetKit 或悬浮组件]
 ```
 
 Gauge for Codex 会短暂启动 `codex app-server --stdio`，请求 `account/rateLimits/read`。它不会执行提示词，也不会读取聊天内容。这是本机集成接口，并非公开稳定 API；未来 Codex 更新后可能需要适配。
+
+macOS 14 及以上的原生组件只通过本机回环接口（`127.0.0.1:38429`）读取菜单栏程序提供的归一化额度百分比、重置时间和更新时间；接口不会暴露账号凭据或聊天内容。菜单栏程序暂时不可用时，组件会保留上次成功快照。
 
 ## 隐私
 

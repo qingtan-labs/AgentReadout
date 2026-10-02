@@ -28,7 +28,7 @@ The original icon combines a geometric **C** for Codex compatibility, a **`>_`**
 - Refreshes at launch, every 60 seconds, when the Mac wakes, and after a reset.
 - Preserves the last successful value during transient failures and marks stale data.
 - Includes a percentage-only compact mode and a manual fallback.
-- Adds draggable small and medium desktop widgets on macOS 12 or later, with exact reset times, a system-colored desktop surface, and a neutral translucent material that lets wallpaper colors show through. Choose **Desktop Widget → Show on Desktop** from the menu-bar menu; this in-app widget is not listed in macOS's Add Widgets gallery.
+- Adds native small and medium WidgetKit desktop widgets on macOS 14 or later. Add one from **Edit Widgets** by searching for **Gauge for Codex**; macOS controls its wallpaper-aware tint. A draggable floating widget remains available on macOS 12–13 and as a legacy option on newer systems.
 - Checks GitHub Releases once a day by default, with an off switch and a manual check. Verified updates can download, replace the writable app copy, and relaunch automatically.
 - Runs natively on Apple silicon and Intel Macs without Electron.
 - Contains no analytics, advertising, account system, or telemetry.
@@ -37,7 +37,7 @@ The original icon combines a geometric **C** for Codex compatibility, a **`>_`**
 
 - macOS 12 Monterey or later.
 - Codex or the ChatGPT desktop app installed and signed in, or a signed-in Codex CLI available in a standard location.
-- Xcode Command Line Tools only when building from source.
+- Full Xcode and XcodeGen to build the native WidgetKit extension from source. Command Line Tools alone build the menu-bar app with the legacy floating widget, but not the native extension.
 
 ## Download
 
@@ -55,7 +55,7 @@ cd GaugeForCodex/quota-overlay
 ./install.sh
 ```
 
-The installer builds a Universal 2 app, installs it to `~/Applications/Gauge for Codex.app`, and registers a per-user LaunchAgent. It also disables the earlier local `CodexGauge` login item when present, without deleting it.
+The installer builds a Universal 2 app, installs it to `~/Applications/Gauge for Codex.app`, and registers a per-user LaunchAgent. It also disables the earlier local `CodexGauge` login item when present, without deleting it. Building the native widget requires full Xcode and XcodeGen; otherwise the app keeps the floating-widget fallback.
 
 To build without installing:
 
@@ -84,10 +84,12 @@ flowchart LR
     C --> D[Remaining percentage and reset time]
     D --> E[macOS menu bar]
     D --> F[Local preferences cache]
-    D --> G[Small and medium desktop widgets]
+    D --> G[Native WidgetKit or floating widget]
 ```
 
 Gauge for Codex starts the `codex app-server --stdio` executable and requests `account/rateLimits/read`. It does not execute prompts or read conversation content. This is a local integration boundary rather than a documented stable public API, so a future Codex update may require an adapter update.
+
+On macOS 14+, the native widget reads only normalized quota percentages, reset timestamps, and update time from the running menu-bar app over a loopback-only HTTP endpoint (`127.0.0.1:38429`). Credentials and conversation data are never exposed by that endpoint. The widget keeps its last successful snapshot if Gauge is temporarily unavailable.
 
 ## Privacy
 

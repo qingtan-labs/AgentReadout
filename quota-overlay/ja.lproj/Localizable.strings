@@ -65,6 +65,10 @@
 "update.helperMissing" = "このインストールには更新ヘルパーがありません。";
 "update.installFailed" = "アップデートをインストールできませんでした。現在のアプリは変更されていません。";
 "menu.desktopWidget" = "デスクトップウィジェット";
+"menu.nativeWidget" = "macOS ウィジェットを追加…";
+"menu.floatingWidget" = "フローティングウィジェット（旧版）";
+"nativeWidget.guideTitle" = "標準の Gauge ウィジェットを追加";
+"nativeWidget.guideBody" = "デスクトップを右クリックして「ウィジェットを編集」を選び、Gauge for Codex を検索して小または中サイズを追加してください。使用枠の更新には Gauge を起動したままにしてください。旧版のフローティングウィジェットは下のメニューから非表示にできます。";
 "widget.title" = "Codex 使用枠";
 "widget.cached" = "古い値";
 "widget.show" = "デスクトップに表示";

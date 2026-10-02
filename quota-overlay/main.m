@@ -25,6 +25,15 @@ static NSString *QGL(NSString *key) {
     return [NSBundle.mainBundle localizedStringForKey:key value:key table:nil];
 }
 
+static BOOL QGNativeWidgetAvailable(void) {
+    if (@available(macOS 14.0, *)) {
+        NSString *extensionPath = [NSBundle.mainBundle.bundlePath
+            stringByAppendingPathComponent:@"Contents/PlugIns/GaugeForCodexWidget.appex"];
+        return [NSFileManager.defaultManager fileExistsAtPath:extensionPath];
+    }
+    return NO;
+}
+
 static NSNumber *QGNumber(id value) {
     if ([value isKindOfClass:NSNumber.class]) return value;
     if ([value isKindOfClass:NSString.class]) {
@@ -547,6 +556,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 @property NSMenuItem *displayMenuItem;
 @property NSMenuItem *fullModeMenuItem;
 @property NSMenuItem *compactModeMenuItem;
+@property NSMenuItem *nativeWidgetMenuItem;
 @property NSMenuItem *addWidgetMenuItem;
 @property NSMenuItem *toggleWidgetMenuItem;
 @property NSMenuItem *smallWidgetMenuItem;
@@ -592,7 +602,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
         [NSUserDefaults.standardUserDefaults setBool:YES forKey:QGAutomaticUpdateChecksKey];
     }
     [self restoreCachedQuota];
-    if (@available(macOS 14.0, *)) {
+    if (QGNativeWidgetAvailable()) {
         _widgetServer = [QGWidgetServer new];
         if (![_widgetServer start]) NSLog(@"Gauge: native widget loopback server could not start");
     }
@@ -696,6 +706,8 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     _manualMenuItem = [menu addItemWithTitle:@"" action:@selector(editQuota:) keyEquivalent:@""];
     _manualMenuItem.target = self;
     [menu addItem:NSMenuItem.separatorItem];
+    _nativeWidgetMenuItem = [menu addItemWithTitle:@"" action:@selector(showNativeWidgetInstructions:) keyEquivalent:@""];
+    _nativeWidgetMenuItem.target = self;
     _addWidgetMenuItem = [menu addItemWithTitle:@"" action:nil keyEquivalent:@""];
     NSMenu *widgetMenu = [NSMenu new];
     _toggleWidgetMenuItem = [widgetMenu addItemWithTitle:@"" action:@selector(toggleDesktopWidget:) keyEquivalent:@""];
@@ -880,7 +892,14 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     _compactModeMenuItem.title = QGL(@"menu.displayCompact");
     _fullModeMenuItem.state = _displayMode == QGDisplayModeFull ? NSControlStateValueOn : NSControlStateValueOff;
     _compactModeMenuItem.state = _displayMode == QGDisplayModeCompact ? NSControlStateValueOn : NSControlStateValueOff;
-    _addWidgetMenuItem.title = QGL(@"menu.desktopWidget");
+    if (QGNativeWidgetAvailable()) {
+        _nativeWidgetMenuItem.title = QGL(@"menu.nativeWidget");
+        _nativeWidgetMenuItem.hidden = NO;
+        _addWidgetMenuItem.title = QGL(@"menu.floatingWidget");
+    } else {
+        _nativeWidgetMenuItem.hidden = YES;
+        _addWidgetMenuItem.title = QGL(@"menu.desktopWidget");
+    }
     _addWidgetMenuItem.hidden = NO;
     BOOL widgetVisible = _desktopWidgetPanel.isVisible;
     _toggleWidgetMenuItem.title = widgetVisible ? QGL(@"widget.hide") : QGL(@"widget.show");
@@ -1711,6 +1730,16 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     } else if (!releaseURL) {
         [alert runModal];
     }
+}
+
+- (void)showNativeWidgetInstructions:(id)sender {
+    (void)sender;
+    NSAlert *alert = [NSAlert new];
+    alert.messageText = QGL(@"nativeWidget.guideTitle");
+    alert.informativeText = QGL(@"nativeWidget.guideBody");
+    [alert addButtonWithTitle:QGL(@"common.ok")];
+    [NSApp activateIgnoringOtherApps:YES];
+    [alert runModal];
 }
 
 - (void)showAbout:(id)sender {

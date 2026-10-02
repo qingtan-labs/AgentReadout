@@ -86,21 +86,38 @@ private struct QuotaProvider: TimelineProvider {
 }
 
 private enum Copy {
-    static var isChinese: Bool { Locale.current.languageCode == "zh" }
-    static var title: String { isChinese ? "Codex 额度" : "Codex quota" }
-    static var noData: String { isChinese ? "打开 Gauge 以同步额度" : "Open Gauge to sync quota" }
-    static var stale: String { isChinese ? "上次同步" : "Last sync" }
-    static var resets: String { isChinese ? "重置" : "Resets" }
+    static var language: String { Locale.current.languageCode ?? "en" }
+
+    static func localized(zh: String, ja: String, es: String, en: String) -> String {
+        switch language {
+        case "zh": return zh
+        case "ja": return ja
+        case "es": return es
+        default: return en
+        }
+    }
+
+    static var title: String { localized(zh: "Codex 额度", ja: "Codex 使用枠", es: "Cuota de Codex", en: "Codex quota") }
+    static var noData: String { localized(zh: "打开 Gauge 以同步额度", ja: "Gauge を開いて同期", es: "Abre Gauge para sincronizar", en: "Open Gauge to sync quota") }
+    static var stale: String { localized(zh: "上次同步", ja: "最終同期", es: "Última sincronización", en: "Last sync") }
+    static var resets: String { localized(zh: "重置", ja: "リセット", es: "Reinicio", en: "Resets") }
+    static var description: String {
+        localized(zh: "在桌面查看 Codex 剩余额度与重置时间",
+                  ja: "Codex の残り使用枠とリセット時刻をデスクトップに表示",
+                  es: "Consulta la cuota restante de Codex y la hora de reinicio en el escritorio",
+                  en: "See Codex quota and reset times on your desktop")
+    }
 
     static func label(_ window: QuotaWindow) -> String {
-        if window.isFiveHour { return isChinese ? "5 小时" : "5 hours" }
-        if window.isSevenDay { return isChinese ? "7 天" : "7 days" }
+        if window.isFiveHour { return localized(zh: "5 小时", ja: "5 時間", es: "5 horas", en: "5 hours") }
+        if window.isSevenDay { return localized(zh: "7 天", ja: "7 日", es: "7 días", en: "7 days") }
         if window.windowDurationMins > 0 {
             let hours = Int((window.windowDurationMins / 60).rounded())
-            return isChinese ? "\(hours) 小时" : "\(hours) hours"
+            return localized(zh: "\(hours) 小时", ja: "\(hours) 時間", es: "\(hours) horas", en: "\(hours) hours")
         }
-        return window.kind == "secondary" ? (isChinese ? "次级额度" : "Secondary")
-                                          : (isChinese ? "额度" : "Quota")
+        return window.kind == "secondary"
+            ? localized(zh: "次级额度", ja: "二次枠", es: "Secundaria", en: "Secondary")
+            : localized(zh: "额度", ja: "使用枠", es: "Cuota", en: "Quota")
     }
 }
 
@@ -235,7 +252,7 @@ struct CodexQuotaWidget: Widget {
             QuotaWidgetView(entry: entry)
         }
         .configurationDisplayName(Copy.title)
-        .description(Copy.isChinese ? "在桌面查看 Codex 剩余额度与重置时间" : "See Codex quota and reset times on your desktop")
+        .description(Copy.description)
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

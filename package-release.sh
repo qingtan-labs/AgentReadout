@@ -14,15 +14,22 @@ cleanup() {
 }
 trap cleanup EXIT
 
-rm -rf "$RELEASE_DIR"
-mkdir -p "$RELEASE_DIR"
 "$ROOT_DIR/quota-overlay/build.sh"
+
+WIDGET_BINARY="$APP_SOURCE/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/MacOS/GaugeForCodexWidget"
+if [[ ! -x "$WIDGET_BINARY" ]]; then
+  echo "Release requires the native WidgetKit extension. Build with full Xcode and XcodeGen." >&2
+  exit 1
+fi
 
 BUILT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_SOURCE/Contents/Info.plist")"
 if [[ "$BUILT_VERSION" != "$VERSION" ]]; then
   echo "Version mismatch: requested $VERSION but app declares $BUILT_VERSION" >&2
   exit 1
 fi
+
+rm -rf "$RELEASE_DIR"
+mkdir -p "$RELEASE_DIR"
 
 ditto "$APP_SOURCE" "$STAGING_DIR/Gauge for Codex.app"
 ln -s /Applications "$STAGING_DIR/Applications"

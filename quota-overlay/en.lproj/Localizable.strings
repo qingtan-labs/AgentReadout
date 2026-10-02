@@ -65,6 +65,10 @@
 "update.helperMissing" = "The update helper is missing from this installation.";
 "update.installFailed" = "The update could not be installed. Your current copy was not changed.";
 "menu.desktopWidget" = "Desktop Widget";
+"menu.nativeWidget" = "Add macOS Widget…";
+"menu.floatingWidget" = "Floating Widget (Legacy)";
+"nativeWidget.guideTitle" = "Add the native Gauge widget";
+"nativeWidget.guideBody" = "Right-click the desktop and choose Edit Widgets. Search for Gauge for Codex, then add a Small or Medium widget. Keep Gauge running to update your quota. You can hide the old floating widget from its menu below.";
 "widget.title" = "Codex quota";
 "widget.cached" = "Cached";
 "widget.show" = "Show on Desktop";

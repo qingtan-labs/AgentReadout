@@ -4,6 +4,8 @@ All notable changes are documented here.
 
 ## 1.0.1 - 2026-10-01
 
+- Added a native macOS 14+ WidgetKit desktop widget whose background and tint are controlled by the system; the floating widget remains a fallback on macOS 12–13 and a legacy option on newer systems.
+- Added a loopback-only, normalized quota snapshot bridge for the native widget; no credentials or conversation content are served.
 - Added a draggable desktop widget with small and medium layouts, saved position and visibility, and system-aware backgrounds.
 - Refined the widget to macOS-sized proportions with a frosted appearance, the compact Windows brand mark, and exact reset times for each quota window.
 - Replaced the fixed widget tint with a translucent neutral surface that preserves the current wallpaper colors.

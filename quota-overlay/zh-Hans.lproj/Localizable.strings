@@ -65,6 +65,10 @@
 "update.helperMissing" = "当前安装中缺少更新辅助程序。";
 "update.installFailed" = "无法安装更新，当前版本没有被修改。";
 "menu.desktopWidget" = "桌面组件";
+"menu.nativeWidget" = "添加 macOS 原生组件…";
+"menu.floatingWidget" = "悬浮组件（旧版）";
+"nativeWidget.guideTitle" = "添加原生 Gauge 组件";
+"nativeWidget.guideBody" = "在桌面右键，选择「编辑小组件」，搜索 Gauge for Codex，再添加小号或中号组件。保持 Gauge 运行即可更新额度。添加后可在下方菜单隐藏旧版悬浮组件。";
 "widget.title" = "Codex 额度";
 "widget.cached" = "旧数据";
 "widget.show" = "显示在桌面";

@@ -65,6 +65,10 @@
 "update.helperMissing" = "Falta el asistente de actualización en esta instalación.";
 "update.installFailed" = "No se pudo instalar la actualización. La copia actual no se modificó.";
 "menu.desktopWidget" = "Widget de escritorio";
+"menu.nativeWidget" = "Añadir widget de macOS…";
+"menu.floatingWidget" = "Widget flotante (anterior)";
+"nativeWidget.guideTitle" = "Añade el widget nativo de Gauge";
+"nativeWidget.guideBody" = "Haz clic derecho en el escritorio y elige Editar widgets. Busca Gauge for Codex y añade el tamaño pequeño o mediano. Mantén Gauge abierto para actualizar la cuota. Puedes ocultar el widget flotante anterior desde el menú inferior.";
 "widget.title" = "Cuota de Codex";
 "widget.cached" = "Anterior";
 "widget.show" = "Mostrar en el escritorio";
