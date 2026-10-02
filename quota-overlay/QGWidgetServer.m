@@ -143,7 +143,17 @@ static uint16_t const QGWidgetPort = 38429;
         if (memchr(request, '\n', length)) break;
     }
     request[length] = '\0';
-    BOOL valid = length >= 20 && strncmp(request, "GET /widget HTTP/1.", 19) == 0;
+    const char *lineEnd = memchr(request, '\n', length);
+    size_t lineLength = lineEnd ? (size_t)(lineEnd - request) : length;
+    while (lineLength > 0 && request[lineLength - 1] == '\r') lineLength--;
+    NSString *requestLine = [[NSString alloc] initWithBytes:request length:lineLength encoding:NSASCIIStringEncoding];
+    NSArray<NSString *> *parts = [requestLine componentsSeparatedByString:@" "];
+    BOOL valid = parts.count == 3 &&
+        [parts[0] isEqualToString:@"GET"] &&
+        ([parts[1] isEqualToString:@"/widget"] ||
+         [parts[1] isEqualToString:@"http://127.0.0.1:38429/widget"]) &&
+        ([parts[2] isEqualToString:@"HTTP/1.0"] || [parts[2] isEqualToString:@"HTTP/1.1"]);
+    if (!valid) NSLog(@"Widget HTTP request rejected: %@", requestLine ?: @"<invalid ASCII>");
     NSData *body = nil;
     if (valid) {
         @synchronized (self) {

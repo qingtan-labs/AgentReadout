@@ -228,7 +228,8 @@ private struct QuotaWidgetView: View {
     }
 }
 
-private struct CodexQuotaWidget: Widget {
+@main
+struct CodexQuotaWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: widgetKind, provider: QuotaProvider()) { entry in
             QuotaWidgetView(entry: entry)
@@ -237,9 +238,4 @@ private struct CodexQuotaWidget: Widget {
         .description(Copy.isChinese ? "在桌面查看 Codex 剩余额度与重置时间" : "See Codex quota and reset times on your desktop")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
-}
-
-@main
-private struct GaugeWidgets: WidgetBundle {
-    var body: some Widget { CodexQuotaWidget() }
 }
