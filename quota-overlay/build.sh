@@ -29,7 +29,7 @@ xcrun clang \
   -arch arm64 -arch x86_64 \
   -mmacosx-version-min=12.0 \
   -framework Cocoa -framework CoreGraphics -framework QuartzCore \
-  "$ROOT_DIR/main.m" \
+  "$ROOT_DIR/main.m" "$ROOT_DIR/QGWidgetServer.m" \
   -o "$MACOS_DIR/GaugeForCodex"
 
 xcrun clang \

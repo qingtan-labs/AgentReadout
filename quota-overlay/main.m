@@ -2,6 +2,7 @@
 #import <CommonCrypto/CommonDigest.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <QuartzCore/QuartzCore.h>
+#import "QGWidgetServer.h"
 #import <math.h>
 #import <unistd.h>
 
@@ -561,6 +562,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 @property NSPanel *desktopWidgetPanel;
 @property NSVisualEffectView *desktopWidgetEffectView;
 @property QGDesktopWidgetView *desktopWidgetView;
+@property QGWidgetServer *widgetServer;
 @property QGDesktopWidgetSize desktopWidgetSize;
 @property NSArray<NSDictionary *> *quotaWindows;
 @property NSDictionary *selectedWindow;
@@ -590,6 +592,10 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
         [NSUserDefaults.standardUserDefaults setBool:YES forKey:QGAutomaticUpdateChecksKey];
     }
     [self restoreCachedQuota];
+    if (@available(macOS 14.0, *)) {
+        _widgetServer = [QGWidgetServer new];
+        if (![_widgetServer start]) NSLog(@"Gauge: native widget loopback server could not start");
+    }
     [self publishWidgetSnapshot];
     id savedWidgetSize = [NSUserDefaults.standardUserDefaults objectForKey:QGDesktopWidgetSizeKey];
     _desktopWidgetSize = savedWidgetSize && [savedWidgetSize integerValue] == QGDesktopWidgetSizeSmall
@@ -650,6 +656,7 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
     [_syncTimer invalidate];
     [_displayTimer invalidate];
     [_updateTimer invalidate];
+    [_widgetServer stop];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:self];
 }
@@ -976,6 +983,8 @@ typedef NS_ENUM(NSInteger, QGDesktopWidgetSize) {
 
 - (void)publishWidgetSnapshot {
     [NSUserDefaults.standardUserDefaults synchronize];
+    [_widgetServer updateWithWindows:_quotaWindows ?: @[]
+                          updatedAt:_lastSuccessfulSync.timeIntervalSince1970];
     [self refreshDesktopWidget];
 }
 
