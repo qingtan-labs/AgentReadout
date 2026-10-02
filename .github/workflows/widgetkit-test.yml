@@ -24,6 +24,11 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPointIdentifier' 'quota-overlay/build/Gauge for Codex.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/Info.plist')" = 'com.apple.widgetkit-extension'
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' 'quota-overlay/build/Gauge for Codex.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/Info.plist')" = '8'
           codesign --verify --deep --strict "quota-overlay/build/Gauge for Codex.app"
+      - name: Verify release packaging
+        run: |
+          ./package-release.sh 1.0.1
+          (cd release && shasum -a 256 -c SHA256SUMS)
+          unzip -p release/Gauge-for-Codex-1.0.1-Universal.zip 'Gauge for Codex.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/Info.plist' | plutil -lint -
       - name: Archive test app
         run: ditto -c -k --sequesterRsrc --keepParent "quota-overlay/build/Gauge for Codex.app" widget-test.zip
       - uses: actions/upload-artifact@v4
