@@ -1,109 +1,38 @@
-# Gauge for Codex
+# AgentReadout
 
-语言：[English](README.md) · 简体中文
+AgentReadout 是一款开源、原生的 macOS 菜单栏工具，集中展示 Codex 与 Claude 的剩余额度、重置时间，以及可用的每日 Token 用量。它曾叫 Gauge for Codex；为保证升级后设置和桌面组件继续可用，内部 bundle ID、URL Scheme 和部分构建路径暂时保留旧名称。
 
-> 非官方第三方工具，与 OpenAI 没有隶属、合作或背书关系。
+[官网](https://qingtan-labs.github.io/GaugeForCodex/) · [下载最新版本](https://github.com/qingtan-labs/GaugeForCodex/releases/latest) · [English](README.md)
 
-![Gauge for Codex 社交预览图](assets/social-preview.png)
+## 功能
 
-在 macOS 菜单栏随时查看 Codex 剩余额度、重置时间和剩余天数。
+- 同时查看 Codex、Claude 的额度周期与会员等级；菜单栏突出最需要关注的一档。进度条默认，环形可选。
+- 原生小、中、大号「额度」与「每日 Token」桌面组件（macOS 14+）；macOS 12–13 可使用悬浮组件。
+- 每日 Token 使用 Codex 提供的日汇总与累计统计；Claude 仅使用现成客户端缓存。没有数据就显示暂不可用，不另建 Token 历史，也不估算费用。
+- 自动刷新、低额度提醒、可选的 24 小时额度趋势，以及自动同步失败时的临时手动额度。
+- 界面支持跟随系统外观与语言，也可单独选择；提供简体中文、英语、日语、西班牙语。
+- 设置和必要的额度快照保存在本机；不读取对话正文，不发送遥测。
 
-原生 macOS · 本地优先 · 轻量 · 开源 · English / 简体中文 / 日本語 / Español
+## 安装
 
-**产品官网：** [qingtan-labs.github.io/GaugeForCodex](https://qingtan-labs.github.io/GaugeForCodex/) · **下载：** [最新版本](https://github.com/qingtan-labs/GaugeForCodex/releases/latest)
+从 [GitHub Releases](https://github.com/qingtan-labs/GaugeForCodex/releases/latest) 下载 Universal DMG 或 ZIP。支持 macOS 12 及以上的 Apple 芯片和 Intel Mac。原生 WidgetKit 桌面组件需要 macOS 14 及以上。
 
-## 界面预览
+发布包采用 ad-hoc 签名，**未经过 Apple 公证**。首次运行如果被 Gatekeeper 拦截，请在系统设置的「隐私与安全性」中确认来源后手动允许。请只从本仓库的 Release 下载并核对随包提供的 SHA-256 校验值。
 
-![Gauge for Codex 菜单栏预览](assets/screenshots/menu-overview.png)
+从源码安装：
 
-图片是功能示意图。实际运行时显示的百分比与重置时间，来自这台 Mac 上的 Codex 安装及当前登录账号。
-
-原创图标由三层语义组成：几何 **C** 代表 Codex 兼容关系，**`>_`** 代表本机编码与命令行，外层进度环代表剩余额度；它没有复制或修改 OpenAI 官方图形。
-
-## 主要功能
-
-- 在菜单栏持续显示剩余百分比和细进度条。
-- 列出所有可用额度周期，并优先展示剩余最少的一档。
-- 同时显示本地化倒计时、剩余天数和当前时区的准确重置时间。
-- 启动时、每 60 秒、Mac 唤醒后和额度重置后自动同步。
-- 临时同步失败时保留最后一次成功值，并明确标记过期数据。
-- 提供“仅百分比”紧凑模式和手动填写后备方案。
-- macOS 14 及以上提供真正的 WidgetKit 小号、中号桌面组件。在桌面右键「编辑小组件」，搜索 **Gauge for Codex** 即可添加；底色与壁纸适配由 macOS 原生控制。macOS 12–13 保留可拖动的悬浮组件，新系统也可作为旧版选项使用。
-- 默认每天从 GitHub Releases 检查一次更新，可关闭也可手动检查；校验通过后可自动替换可写位置中的应用并重新启动。
-- 原生支持 Apple Silicon 与 Intel Mac，不使用 Electron。
-- 不包含分析、广告、账号系统或遥测。
-
-## 使用要求
-
-- macOS 12 Monterey 或更高版本。
-- 已安装并登录 Codex 或 ChatGPT 桌面应用；也支持标准路径下已登录的 Codex CLI。
-- 从源码构建原生 WidgetKit 组件需要完整 Xcode 和 XcodeGen。只有 Command Line Tools 时仍可构建菜单栏程序及旧版悬浮组件，但不包含原生组件。
-
-## 下载
-
-最新版 Universal 2 DMG 与 ZIP 可从 [GitHub Releases](https://github.com/qingtan-labs/GaugeForCodex/releases/latest) 下载；每个版本都会附带 SHA-256 校验值。
-
-公开构建目前采用临时签名，尚未经过 Apple 公证。首次启动时，请在“应用程序”中按住 Control 点击应用并选择“打开”；不要关闭 Gatekeeper。
-
-如果你安装过早期的 1.0.1 或已撤回的 1.0.2/1.0.3，请手动安装一次现在的 1.0.1 安装包。旧版本无法自动更新到这次合并后的同号版本。
-
-## 从源码安装
-
-```bash
+```sh
 git clone https://github.com/qingtan-labs/GaugeForCodex.git
 cd GaugeForCodex/quota-overlay
 ./install.sh
 ```
 
-安装脚本会构建 Universal 2 应用，将其安装到 `~/Applications/Gauge for Codex.app`，并注册当前用户的 LaunchAgent。如果检测到早期本地版 `CodexGauge`，脚本会停用其登录启动项，但不会删除旧文件。构建原生组件需完整 Xcode 与 XcodeGen，否则仍可使用悬浮组件后备方案。
+源码安装脚本目前仍使用兼容路径 `~/Applications/Gauge for Codex.app`。新发布的 DMG/ZIP 内应用显示为 `AgentReadout.app`；旧版自动升级会沿用原安装路径，但应用界面名称已更新。登录自启默认关闭，升级保留已有选择。
 
-只构建、不安装：
+## 数据来源与隐私
 
-```bash
-cd quota-overlay
-./build.sh
-```
+Codex 额度使用本机 Codex 的只读 `account/rateLimits/read` 接口；每日 Token 使用其现有的官方日汇总。Claude 优先读取本机客户端的现成用量缓存，必要且有本机授权时直接向 Anthropic 请求最新额度。外部服务接口可能变化，应用会明确提示同步失败或数据过期，不将缺失数据当成 0。
 
-产物位于 `quota-overlay/build/Gauge for Codex.app`。
+本项目没有自营账号或后端，也没有遥测、广告 SDK。更新检查访问 GitHub，Claude 实时同步可能访问 Anthropic。详见 [隐私说明](PRIVACY.md) 与 [技术说明](quota-overlay/README.zh-Hans.md)。
 
-## 可选启动器
-
-不驻留的启动器适合制作 Finder 快捷方式，或由用户自行加入“登录项”。它会优先唤起已有 LaunchAgent，失败时再直接打开主应用。
-
-```bash
-cd launcher
-./build.sh
-```
-
-## 工作方式
-
-```mermaid
-flowchart LR
-    A[Gauge for Codex] -->|查找可信可执行文件| B[本机 Codex]
-    B -->|app-server 标准输入输出| C[只读额度请求]
-    C --> D[剩余百分比与重置时间]
-    D --> E[macOS 菜单栏]
-    D --> F[本机偏好设置缓存]
-    D --> G[原生 WidgetKit 或悬浮组件]
-```
-
-Gauge for Codex 会短暂启动 `codex app-server --stdio`，请求 `account/rateLimits/read`。它不会执行提示词，也不会读取聊天内容。这是本机集成接口，并非公开稳定 API；未来 Codex 更新后可能需要适配。
-
-macOS 14 及以上的原生组件只通过本机回环接口（`127.0.0.1:38429`）读取菜单栏程序提供的归一化额度百分比、重置时间和更新时间；接口不会暴露账号凭据或聊天内容。菜单栏程序暂时不可用时，组件会保留上次成功快照。
-
-## 隐私
-
-Gauge for Codex 不运营外部服务，也不发送遥测。程序只在本机 UserDefaults 中保存归一化后的额度百分比、重置时间戳、显示偏好和最后成功同步时间。启用更新检查后，它只会访问本项目公开的 GitHub Releases API；仅在发现新版本时下载发布文件。Codex 组件可能使用你已在本机配置的账号与 OpenAI 通信。详见 [PRIVACY.md](PRIVACY.md)。
-
-## 项目文档
-
-- [安全策略](SECURITY.md)
-- [支持](SUPPORT.md)
-- [参与贡献](CONTRIBUTING.md)
-- [更新记录](CHANGELOG.md)
-
-## 许可证与商标
-
-源码和 Gauge for Codex 原创图形采用 [MIT License](LICENSE)。
-
-Codex、ChatGPT、OpenAI 及其相关标志属于 OpenAI。本项目仅使用“Codex”一词说明兼容关系；应用图标是原创设计，不包含 OpenAI 或 Codex 官方标志。详见 [NOTICE.md](NOTICE.md)。
+AgentReadout 为独立第三方工具，与 OpenAI 或 Anthropic 没有隶属或背书关系。源码与原创图形采用 [MIT 许可证](LICENSE)。

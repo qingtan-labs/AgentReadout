@@ -24,7 +24,7 @@ if [[ "${1:-}" == "--purge" ]]; then
   defaults delete group.com.qingtanlabs.gaugeforcodex 2>/dev/null || true
 fi
 
-echo "Gauge for Codex was moved to the Trash."
+echo "AgentReadout was moved to the Trash."
 if [[ "${1:-}" != "--purge" ]]; then
   echo "Preferences were preserved. Run with --purge to remove them too."
 fi

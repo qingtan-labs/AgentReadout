@@ -4,8 +4,15 @@
 <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>zh-Hans</string>
+        <string>ja</string>
+        <string>es</string>
+    </array>
     <key>CFBundleDisplayName</key>
-    <string>Gauge for Codex</string>
+    <string>AgentReadout</string>
     <key>CFBundleExecutable</key>
     <string>GaugeForCodexWidget</string>
     <key>CFBundleIdentifier</key>
@@ -17,9 +24,13 @@
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.1</string>
+    <string>2.0.0</string>
     <key>CFBundleVersion</key>
-    <string>8</string>
+    <string>32</string>
+    <key>QGSupportsClaudeProvider</key>
+    <true/>
+    <key>QGSupportsDualProvider</key>
+    <true/>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>NSAppTransportSecurity</key>

@@ -4,11 +4,11 @@ import './globals.css';
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export const metadata: Metadata = {
-  title: 'Gauge for Codex — Codex usage in your macOS menu bar',
+  title: 'AgentReadout — Codex 与 Claude 额度，一眼读懂',
   description:
-    'See Codex remaining quota, every usage window, and the exact reset time from your macOS menu bar.',
-  applicationName: 'Gauge for Codex',
-  keywords: ['Codex', 'macOS', 'menu bar', 'usage', 'quota', 'open source'],
+    'AgentReadout 是原生 macOS 菜单栏应用，集中展示 Codex 与 Claude 额度、重置时间及每日 Token。',
+  applicationName: 'AgentReadout',
+  keywords: ['AgentReadout', 'Codex', 'Claude', 'macOS', 'menu bar', 'Tokens', 'quota', 'open source'],
   icons: {
     icon: [
       { url: `${basePath}/favicon.ico?v=2`, sizes: '32x32' },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body>{children}</body>
     </html>
   );

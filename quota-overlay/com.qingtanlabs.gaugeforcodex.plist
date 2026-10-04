@@ -9,7 +9,7 @@
         <string>__GAUGE_FOR_CODEX_EXECUTABLE__</string>
     </array>
     <key>RunAtLoad</key>
-    <true/>
+    <false/>
     <key>LimitLoadToSessionType</key>
     <string>Aqua</string>
     <key>ProcessType</key>

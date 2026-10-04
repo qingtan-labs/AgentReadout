@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in Gauge for Codex
+description: Report a reproducible problem in AgentReadout
 title: "[Bug]: "
 labels: [bug]
 body:
@@ -16,8 +16,8 @@ body:
   - type: input
     id: versions
     attributes:
-      label: Gauge for Codex and Codex versions
-      placeholder: Gauge for Codex 1.0.0; Codex version…
+      label: AgentReadout and Codex versions
+      placeholder: AgentReadout 2.0.0; Codex version…
     validations:
       required: true
   - type: textarea

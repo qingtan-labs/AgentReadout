@@ -2,12 +2,12 @@
 set -euo pipefail
 
 ROOT_DIR="${0:A:h}"
-VERSION="${1:-1.0.1}"
+VERSION="${1:-2.0.0}"
 RELEASE_DIR="$ROOT_DIR/release"
 STAGING_DIR="$(mktemp -d)"
 APP_SOURCE="$ROOT_DIR/quota-overlay/build/Gauge for Codex.app"
-DMG_PATH="$RELEASE_DIR/Gauge-for-Codex-$VERSION-Universal.dmg"
-ZIP_PATH="$RELEASE_DIR/Gauge-for-Codex-$VERSION-Universal.zip"
+DMG_PATH="$RELEASE_DIR/AgentReadout-$VERSION-Universal.dmg"
+ZIP_PATH="$RELEASE_DIR/AgentReadout-$VERSION-Universal.zip"
 
 cleanup() {
   rm -rf "$STAGING_DIR"
@@ -31,15 +31,18 @@ fi
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 
-ditto "$APP_SOURCE" "$STAGING_DIR/Gauge for Codex.app"
+ditto "$APP_SOURCE" "$STAGING_DIR/AgentReadout.app"
 ln -s /Applications "$STAGING_DIR/Applications"
-hdiutil create -volname "Gauge for Codex" -srcfolder "$STAGING_DIR" \
+hdiutil create -volname "AgentReadout" -srcfolder "$STAGING_DIR" \
   -ov -format UDZO "$DMG_PATH" >/dev/null
-ditto -c -k --sequesterRsrc --keepParent "$APP_SOURCE" "$ZIP_PATH"
+ditto -c -k --sequesterRsrc --keepParent "$STAGING_DIR/AgentReadout.app" "$ZIP_PATH"
+xcrun clang -fobjc-arc -Wall -Wextra -Werror -framework Foundation \
+  "$ROOT_DIR/quota-overlay/GenerateUpdateManifest.m" -o "$STAGING_DIR/GenerateUpdateManifest"
+"$STAGING_DIR/GenerateUpdateManifest" "$APP_SOURCE" "$ZIP_PATH"
 
 (
   cd "$RELEASE_DIR"
-  shasum -a 256 "${DMG_PATH:t}" "${ZIP_PATH:t}" > SHA256SUMS
+  shasum -a 256 "${DMG_PATH:t}" "${ZIP_PATH:t}" update.json > SHA256SUMS
 )
 
 echo "Release artifacts: $RELEASE_DIR"

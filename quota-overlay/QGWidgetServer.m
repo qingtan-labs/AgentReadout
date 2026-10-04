@@ -1,4 +1,5 @@
 #import "QGWidgetServer.h"
+#import "QGPlan.h"
 
 #import <arpa/inet.h>
 #import <dispatch/dispatch.h>
@@ -11,6 +12,42 @@
 #import <unistd.h>
 
 static uint16_t const QGWidgetPort = 38429;
+
+static NSDictionary *QGWidgetSnapshot(NSArray<NSDictionary *> *codexWindows, NSTimeInterval codexUpdatedAt,
+                                      BOOL codexFailed, NSArray<NSDictionary *> *claudeWindows,
+                                      NSTimeInterval claudeUpdatedAt, BOOL claudeFailed,
+                                      NSString *selectedProvider, NSString *displayMode,
+                                      BOOL claudeEnabled, BOOL legacyClaudeSupport,
+                                      NSString *codexPlanName, NSString *claudePlanName, NSString *quotaStyle,
+                                      NSString *appearanceMode, NSString *language, NSDictionary *dailyUsage) {
+    BOOL legacyClaude = legacyClaudeSupport && [selectedProvider isEqualToString:@"claude"] && claudeEnabled;
+    NSArray<NSDictionary *> *legacyWindows = legacyClaude ? claudeWindows : codexWindows;
+    NSTimeInterval legacyUpdatedAt = legacyClaude ? claudeUpdatedAt : codexUpdatedAt;
+    return @{
+        // Older installed extensions use these three fields and remain Codex-only
+        // unless they explicitly advertised Claude support.
+        @"windows": legacyWindows ?: @[],
+        @"updatedAt": @(MAX(0.0, legacyUpdatedAt)),
+        @"provider": legacyClaude ? @"claude" : @"codex",
+        @"providers": @{
+            @"codex": @{@"windows": codexWindows ?: @[], @"updatedAt": @(MAX(0.0, codexUpdatedAt)),
+                        @"planName": QGValidatedPlanLabel(codexPlanName) ?: NSNull.null,
+                        @"stale": [NSNumber numberWithBool:codexFailed]},
+            @"claude": @{@"windows": claudeEnabled ? (claudeWindows ?: @[]) : @[],
+                         @"planName": (claudeEnabled ? QGValidatedPlanLabel(claudePlanName) : nil) ?: NSNull.null,
+                         @"updatedAt": @(claudeEnabled ? MAX(0.0, claudeUpdatedAt) : 0.0),
+                         @"stale": [NSNumber numberWithBool:(claudeEnabled && claudeFailed)]}
+        },
+        @"selectedProvider": [selectedProvider isEqualToString:@"claude"] ? @"claude" : @"codex",
+        @"displayMode": displayMode ?: @"follow",
+        @"quotaStyle": [quotaStyle isEqual:@"ring"] ? @"ring" : @"bar",
+        @"appearanceMode": [@[@"light", @"dark"] containsObject:appearanceMode] ? appearanceMode : @"system",
+        @"dailyUsage": dailyUsage ?: @{},
+        @"language": [@[@"zh-Hans", @"en", @"ja", @"es"] containsObject:language] ? language : @"en",
+        @"localeIdentifier": NSLocale.currentLocale.localeIdentifier,
+        @"claudeEnabled": [NSNumber numberWithBool:claudeEnabled]
+    };
+}
 
 @interface QGWidgetServer () {
     int _listenFD;
@@ -89,11 +126,26 @@ static uint16_t const QGWidgetPort = 38429;
     [self stop];
 }
 
-- (void)updateWithWindows:(NSArray<NSDictionary *> *)windows updatedAt:(NSTimeInterval)timestamp {
-    NSDictionary *snapshot = @{
-        @"windows": windows ?: @[],
-        @"updatedAt": @(MAX(0.0, timestamp))
-    };
+- (void)updateWithCodexWindows:(NSArray<NSDictionary *> *)codexWindows
+                codexUpdatedAt:(NSTimeInterval)codexUpdatedAt
+                   codexFailed:(BOOL)codexFailed
+                 codexPlanName:(NSString *)codexPlanName
+                  claudeWindows:(NSArray<NSDictionary *> *)claudeWindows
+               claudeUpdatedAt:(NSTimeInterval)claudeUpdatedAt
+                  claudeFailed:(BOOL)claudeFailed
+                claudePlanName:(NSString *)claudePlanName
+              selectedProvider:(NSString *)selectedProvider
+                   displayMode:(NSString *)displayMode
+                    quotaStyle:(NSString *)quotaStyle
+                appearanceMode:(NSString *)appearanceMode
+                      language:(NSString *)language
+                    dailyUsage:(NSDictionary *)dailyUsage
+                 claudeEnabled:(BOOL)claudeEnabled
+           legacyClaudeSupport:(BOOL)legacyClaudeSupport {
+    NSDictionary *snapshot = QGWidgetSnapshot(codexWindows, codexUpdatedAt, codexFailed,
+                                              claudeWindows, claudeUpdatedAt, claudeFailed,
+                                              selectedProvider, displayMode, claudeEnabled, legacyClaudeSupport,
+                                              codexPlanName, claudePlanName, quotaStyle, appearanceMode, language, dailyUsage);
     NSData *data = [NSJSONSerialization dataWithJSONObject:snapshot options:0 error:nil];
     if (!data) return;
     @synchronized (self) {
@@ -177,3 +229,44 @@ static uint16_t const QGWidgetPort = 38429;
 }
 
 @end
+
+BOOL QGRunWidgetSnapshotSelfTests(void) {
+    NSArray *codex = @[@{@"remainingPercent": @42}];
+    NSArray *claude = @[@{@"remainingPercent": @81}];
+    NSDictionary *daily = @{@"days": @[], @"summary": @{@"lifetimeTokens": @120}, @"available": @YES};
+    NSDictionary *dual = QGWidgetSnapshot(codex, 10, YES, claude, 20, NO, @"claude", @"both", YES, NO, @"Plus", @"Max 5×", @"bar", @"dark", @"zh-Hans", daily);
+    BOOL dualPassed = [dual[@"displayMode"] isEqualToString:@"both"] &&
+        [dual[@"providers"][@"codex"][@"windows"] isEqual:codex] &&
+        [dual[@"providers"][@"claude"][@"windows"] isEqual:claude] &&
+        [dual[@"providers"][@"codex"][@"stale"] boolValue] &&
+        [dual[@"provider"] isEqualToString:@"codex"] && [dual[@"windows"] isEqual:codex] &&
+        [dual[@"dailyUsage"] isEqual:daily];
+    fprintf(stdout, "%s dual-provider snapshot with legacy fallback\n", dualPassed ? "PASS" : "FAIL");
+
+    NSData *dualJSON = [NSJSONSerialization dataWithJSONObject:dual options:0 error:nil];
+    NSString *dualJSONText = [[NSString alloc] initWithData:dualJSON encoding:NSUTF8StringEncoding];
+    BOOL jsonBooleansPassed = [dualJSONText containsString:@"\"claudeEnabled\":true"] &&
+        [dualJSONText containsString:@"\"stale\":true"] &&
+        [dualJSONText containsString:@"\"stale\":false"];
+    fprintf(stdout, "%s widget snapshot JSON booleans\n", jsonBooleansPassed ? "PASS" : "FAIL");
+
+    NSDictionary *disabled = QGWidgetSnapshot(codex, 10, NO, claude, 20, YES, @"claude", @"both", NO, YES, @"private@example.com", @"Max 5×", @"unknown", @"invalid", @"invalid", nil);
+    BOOL disabledPassed = [disabled[@"providers"][@"claude"][@"windows"] count] == 0 &&
+        [disabled[@"provider"] isEqualToString:@"codex"] && [disabled[@"windows"] isEqual:codex];
+    fprintf(stdout, "%s disconnected Claude hidden from widget\n", disabledPassed ? "PASS" : "FAIL");
+    BOOL plansPassed = [dual[@"providers"][@"codex"][@"planName"] isEqual:@"Plus"] &&
+        [dual[@"providers"][@"claude"][@"planName"] isEqual:@"Max 5×"] &&
+        disabled[@"providers"][@"codex"][@"planName"] == NSNull.null &&
+        disabled[@"providers"][@"claude"][@"planName"] == NSNull.null;
+    fprintf(stdout, "%s widget plan labels allowlisted; disabled and invalid labels omitted\n", plansPassed ? "PASS" : "FAIL");
+    NSDictionary *ring = QGWidgetSnapshot(codex, 10, NO, claude, 20, NO, @"codex", @"both", YES, YES, nil, nil, @"ring", @"light", @"en", nil);
+    NSDictionary *unset = QGWidgetSnapshot(codex, 10, NO, claude, 20, NO, @"codex", @"both", YES, YES, nil, nil, nil, nil, nil, nil);
+    BOOL stylePassed = [dual[@"quotaStyle"] isEqual:@"bar"] && [disabled[@"quotaStyle"] isEqual:@"bar"] &&
+        [ring[@"quotaStyle"] isEqual:@"ring"] && [unset[@"quotaStyle"] isEqual:@"bar"];
+    fprintf(stdout, "%s widget style propagated with safe default\n", stylePassed ? "PASS" : "FAIL");
+    BOOL presentationPassed = [dual[@"appearanceMode"] isEqual:@"dark"] && [dual[@"language"] isEqual:@"zh-Hans"] &&
+        [ring[@"appearanceMode"] isEqual:@"light"] && [ring[@"language"] isEqual:@"en"] &&
+        [disabled[@"appearanceMode"] isEqual:@"system"] && [disabled[@"language"] isEqual:@"en"];
+    fprintf(stdout, "%s widget appearance and language preferences allowlisted\n", presentationPassed ? "PASS" : "FAIL");
+    return dualPassed && jsonBooleansPassed && disabledPassed && plansPassed && stylePassed && presentationPassed;
+}

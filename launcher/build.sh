@@ -46,5 +46,6 @@ plutil -lint "$CONTENTS_DIR/Info.plist"
 "$MACOS_DIR/GaugeForCodexLauncher" --self-test
 codesign --force --deep --sign - "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR"
-lipo "$MACOS_DIR/GaugeForCodexLauncher" -verify_arch arm64 x86_64
+lipo "$MACOS_DIR/GaugeForCodexLauncher" -verify_arch arm64
+lipo "$MACOS_DIR/GaugeForCodexLauncher" -verify_arch x86_64
 echo "Built: $APP_DIR"

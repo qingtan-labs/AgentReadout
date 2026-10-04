@@ -28,8 +28,8 @@ xcrun clang \
   -Wall -Wextra -Werror \
   -arch arm64 -arch x86_64 \
   -mmacosx-version-min=12.0 \
-  -framework Cocoa -framework CoreGraphics -framework ImageIO -framework QuartzCore \
-  "$ROOT_DIR/main.m" "$ROOT_DIR/QGWidgetServer.m" \
+  -framework Cocoa -framework CoreGraphics -framework ImageIO -framework QuartzCore -framework Security -framework UserNotifications \
+  "$ROOT_DIR/main.m" "$ROOT_DIR/QGWidgetServer.m" "$ROOT_DIR/QGClaudeQuota.m" \
   -o "$MACOS_DIR/GaugeForCodex"
 
 xcrun clang \
@@ -67,6 +67,16 @@ done
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 SDK_MAJOR="${SDK_VERSION%%.*}"
 if (( SDK_MAJOR >= 14 )); then
+  mkdir -p "$CONTENTS_DIR/Frameworks"
+  for bridge_arch in arm64 x86_64; do
+    xcrun swiftc -emit-library -module-name QGWidgetBridge -module-cache-path "$BUILD_DIR/BridgeModuleCache" \
+      -target "$bridge_arch-apple-macos14.0" -framework WidgetKit \
+      -Xlinker -install_name -Xlinker '@rpath/libQGWidgetBridge.dylib' \
+      "$ROOT_DIR/WidgetBridge.swift" -o "$BUILD_DIR/WidgetBridge-$bridge_arch.dylib"
+  done
+  lipo -create "$BUILD_DIR/WidgetBridge-arm64.dylib" "$BUILD_DIR/WidgetBridge-x86_64.dylib" \
+    -output "$CONTENTS_DIR/Frameworks/libQGWidgetBridge.dylib"
+  codesign --force --sign - "$CONTENTS_DIR/Frameworks/libQGWidgetBridge.dylib"
   command -v xcodegen >/dev/null || { echo "XcodeGen is required for native widget builds." >&2; exit 1; }
   xcodegen generate --spec "$WIDGET_SOURCE_DIR/project.yml" --project "$WIDGET_SOURCE_DIR" >/dev/null
   xcodebuild \
@@ -85,7 +95,8 @@ if (( SDK_MAJOR >= 14 )); then
   [[ "$WIDGET_BUILD" == "$HOST_BUILD" ]] || { echo "WidgetKit extension build version mismatch." >&2; exit 1; }
   plutil -lint "$WIDGET_APP_DIR/Contents/Info.plist"
   codesign --force --sign - --entitlements "$WIDGET_SOURCE_DIR/Widget.entitlements" "$WIDGET_APP_DIR"
-  lipo "$WIDGET_APP_DIR/Contents/MacOS/GaugeForCodexWidget" -verify_arch arm64 x86_64
+  lipo "$WIDGET_APP_DIR/Contents/MacOS/GaugeForCodexWidget" -verify_arch arm64
+  lipo "$WIDGET_APP_DIR/Contents/MacOS/GaugeForCodexWidget" -verify_arch x86_64
 else
   echo "Native WidgetKit extension skipped: macOS 14 SDK or newer is required."
 fi
@@ -93,6 +104,8 @@ fi
 codesign --force --sign - "$HELPERS_DIR/GaugeForCodexUpdater"
 codesign --force --sign - "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR"
-lipo "$MACOS_DIR/GaugeForCodex" -verify_arch arm64 x86_64
-lipo "$HELPERS_DIR/GaugeForCodexUpdater" -verify_arch arm64 x86_64
+lipo "$MACOS_DIR/GaugeForCodex" -verify_arch arm64
+lipo "$MACOS_DIR/GaugeForCodex" -verify_arch x86_64
+lipo "$HELPERS_DIR/GaugeForCodexUpdater" -verify_arch arm64
+lipo "$HELPERS_DIR/GaugeForCodexUpdater" -verify_arch x86_64
 echo "Built: $APP_DIR"

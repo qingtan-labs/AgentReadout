@@ -69,9 +69,9 @@ static NSBitmapImageRep *SocialPreview(NSImage *icon) {
                 hints:nil];
     [NSGraphicsContext restoreGraphicsState];
 
-    [@"Gauge for Codex" drawInRect:NSMakeRect(610, 420, 600, 82)
+    [@"AgentReadout" drawInRect:NSMakeRect(610, 420, 600, 82)
                        withAttributes:TextStyle(61, NSFontWeightBold, NSColor.whiteColor)];
-    [@"Codex usage and reset time,\nat a glance." drawInRect:NSMakeRect(614, 310, 560, 96)
+    [@"Codex + Claude quotas,\nat a glance." drawInRect:NSMakeRect(614, 310, 560, 96)
                                                 withAttributes:TextStyle(32, NSFontWeightMedium,
                                                                                GColor(220, 229, 247, 1))];
 
@@ -130,7 +130,7 @@ static NSBitmapImageRep *MenuOverview(NSImage *icon) {
 
     NSRect menuBar = NSMakeRect(90, 622, 1220, 48);
     DrawRoundRect(menuBar, 0, GColor(14, 19, 33, 0.70));
-    [@"Gauge for Codex" drawInRect:NSMakeRect(120, 634, 220, 25)
+    [@"AgentReadout" drawInRect:NSMakeRect(120, 634, 220, 25)
                       withAttributes:TextStyle(17, NSFontWeightSemibold, NSColor.whiteColor)];
 
     NSRect quotaItem = NSMakeRect(1117, 626, 160, 39);
@@ -156,7 +156,7 @@ static NSBitmapImageRep *MenuOverview(NSImage *icon) {
              fraction:1.0
        respectFlipped:NO
                 hints:nil];
-    DrawMenuRow(@"Gauge for Codex · 76% remaining", NSMakeRect(888, 539, 355, 27),
+    DrawMenuRow(@"AgentReadout · 76% remaining", NSMakeRect(888, 539, 355, 27),
                 NSFontWeightSemibold, GColor(25, 28, 39, 1));
     DrawMenuRow(@"5 hr window · 76% remaining", NSMakeRect(826, 492, 400, 27),
                 NSFontWeightRegular, GColor(41, 45, 58, 1));
@@ -176,7 +176,7 @@ static NSBitmapImageRep *MenuOverview(NSImage *icon) {
                 NSFontWeightRegular, GColor(32, 36, 49, 1));
     [GColor(28, 32, 45, 0.10) setFill];
     NSRectFill(NSMakeRect(816, 201, 440, 1));
-    DrawMenuRow(@"About Gauge for Codex", NSMakeRect(826, 164, 390, 27),
+    DrawMenuRow(@"About AgentReadout", NSMakeRect(826, 164, 390, 27),
                 NSFontWeightRegular, GColor(32, 36, 49, 1));
 
     NSArray<NSString *> *numbers = @[@"1", @"2", @"3"];

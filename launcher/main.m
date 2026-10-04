@@ -10,7 +10,9 @@ static NSString *QLAppPath(void) {
         return registeredURL.path;
     }
     NSArray<NSString *> *candidates = @[
+        [NSHomeDirectory() stringByAppendingPathComponent:@"Applications/AgentReadout.app"],
         [NSHomeDirectory() stringByAppendingPathComponent:@"Applications/Gauge for Codex.app"],
+        @"/Applications/AgentReadout.app",
         @"/Applications/Gauge for Codex.app"
     ];
     for (NSString *path in candidates) {
@@ -21,31 +23,31 @@ static NSString *QLAppPath(void) {
 
 static NSString *QLText(NSString *key) {
     NSDictionary *english = @{
-        @"title": @"Gauge for Codex could not start",
-        @"missing": @"Gauge for Codex is not installed at %@.",
-        @"timeout": @"Opening Gauge for Codex timed out.",
-        @"failure": @"Could not open Gauge for Codex: %@",
+        @"title": @"AgentReadout could not start",
+        @"missing": @"AgentReadout is not installed at %@.",
+        @"timeout": @"Opening AgentReadout timed out.",
+        @"failure": @"Could not open AgentReadout: %@",
         @"ok": @"OK"
     };
     NSDictionary *chinese = @{
-        @"title": @"Gauge for Codex 未能启动",
-        @"missing": @"在 %@ 找不到 Gauge for Codex。",
-        @"timeout": @"启动 Gauge for Codex 超时。",
-        @"failure": @"无法打开 Gauge for Codex：%@",
+        @"title": @"AgentReadout 未能启动",
+        @"missing": @"在 %@ 找不到 AgentReadout。",
+        @"timeout": @"启动 AgentReadout 超时。",
+        @"failure": @"无法打开 AgentReadout：%@",
         @"ok": @"好"
     };
     NSDictionary *japanese = @{
-        @"title": @"Gauge for Codex を起動できません",
-        @"missing": @"%@ に Gauge for Codex がインストールされていません。",
-        @"timeout": @"Gauge for Codex の起動がタイムアウトしました。",
-        @"failure": @"Gauge for Codex を開けません：%@",
+        @"title": @"AgentReadout を起動できません",
+        @"missing": @"%@ に AgentReadout がインストールされていません。",
+        @"timeout": @"AgentReadout の起動がタイムアウトしました。",
+        @"failure": @"AgentReadout を開けません：%@",
         @"ok": @"OK"
     };
     NSDictionary *spanish = @{
-        @"title": @"No se pudo iniciar Gauge for Codex",
-        @"missing": @"Gauge for Codex no está instalado en %@.",
-        @"timeout": @"Se agotó el tiempo al abrir Gauge for Codex.",
-        @"failure": @"No se pudo abrir Gauge for Codex: %@",
+        @"title": @"No se pudo iniciar AgentReadout",
+        @"missing": @"AgentReadout no está instalado en %@.",
+        @"timeout": @"Se agotó el tiempo al abrir AgentReadout.",
+        @"failure": @"No se pudo abrir AgentReadout: %@",
         @"ok": @"Aceptar"
     };
     NSString *language = NSLocale.preferredLanguages.firstObject.lowercaseString ?: @"en";
@@ -108,7 +110,9 @@ static BOOL QLOpenApplication(NSError **resultError) {
 }
 
 static int QLRunSelfTest(void) {
-    BOOL pathPassed = [QLAppPath().lastPathComponent isEqualToString:@"Gauge for Codex.app"];
+    NSString *resolvedName = QLAppPath().lastPathComponent;
+    BOOL pathPassed = [resolvedName isEqualToString:@"AgentReadout.app"] ||
+        [resolvedName isEqualToString:@"Gauge for Codex.app"];
     BOOL bundlePassed = [QLBundleID isEqualToString:QLAgentLabel];
     fprintf(stdout, "%s resolves an application path\n", pathPassed ? "PASS" : "FAIL");
     fprintf(stdout, "%s bundle and launch-agent identifiers match\n", bundlePassed ? "PASS" : "FAIL");

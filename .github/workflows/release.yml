@@ -19,6 +19,8 @@ jobs:
         run: brew install xcodegen
       - name: Build release artifacts
         run: ./package-release.sh "${GITHUB_REF_NAME#v}"
+      - name: Verify widget and updater regressions
+        run: zsh ./quota-overlay/test-regressions.sh
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -30,17 +32,17 @@ jobs:
           fi
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" \
-              release/Gauge-for-Codex-*-Universal.dmg \
-              release/Gauge-for-Codex-*-Universal.zip \
-              release/SHA256SUMS --clobber
+              release/AgentReadout-*-Universal.dmg \
+              release/AgentReadout-*-Universal.zip \
+              release/SHA256SUMS release/update.json --clobber
             gh release edit "$GITHUB_REF_NAME" \
-              --title "Gauge for Codex ${VERSION}" \
+              --title "AgentReadout ${VERSION}" \
               --notes-file "$NOTES_FILE"
           else
             gh release create "$GITHUB_REF_NAME" \
-              release/Gauge-for-Codex-*-Universal.dmg \
-              release/Gauge-for-Codex-*-Universal.zip \
-              release/SHA256SUMS \
-              --title "Gauge for Codex ${VERSION}" \
+              release/AgentReadout-*-Universal.dmg \
+              release/AgentReadout-*-Universal.zip \
+              release/SHA256SUMS release/update.json \
+              --title "AgentReadout ${VERSION}" \
               --notes-file "$NOTES_FILE"
           fi

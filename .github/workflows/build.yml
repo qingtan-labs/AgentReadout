@@ -7,10 +7,14 @@ on:
 
 jobs:
   native-macos:
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
       - name: Build and test menu-bar app and desktop widget
         run: ./quota-overlay/build.sh
+      - name: Widget timeline and updater rollback regressions
+        run: zsh ./quota-overlay/test-regressions.sh
       - name: Build and test optional launcher
         run: ./launcher/build.sh
