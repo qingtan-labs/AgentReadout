@@ -12,7 +12,7 @@ HELPERS_DIR="$CONTENTS_DIR/Helpers"
 ICON_MASTER="$BUILD_DIR/AppIcon-master.png"
 ICON_TIFF="$BUILD_DIR/AppIcon.tiff"
 ICON_TIFF_DIR="$BUILD_DIR/IconTIFFs"
-ICON_SOURCE="$PROJECT_DIR/shared/CodexGaugeIcon.m"
+ICON_SOURCE="$PROJECT_DIR/assets/app-icon.png"
 WIDGET_SOURCE_DIR="$ROOT_DIR/widget"
 WIDGET_APP_DIR="$CONTENTS_DIR/PlugIns/GaugeForCodexWidget.appex"
 
@@ -41,14 +41,7 @@ xcrun clang \
   "$ROOT_DIR/updater.m" \
   -o "$HELPERS_DIR/GaugeForCodexUpdater"
 
-xcrun clang \
-  -fobjc-arc -fno-modules \
-  -Wall -Wextra -Werror \
-  -mmacosx-version-min=12.0 \
-  -framework Cocoa \
-  "$ICON_SOURCE" \
-  -o "$BUILD_DIR/GenerateGaugeForCodexIcon"
-"$BUILD_DIR/GenerateGaugeForCodexIcon" "$ICON_MASTER"
+cp "$ICON_SOURCE" "$ICON_MASTER"
 for size in 16 32 48 128 256 512 1024; do
   sips -z "$size" "$size" "$ICON_MASTER" --out "$ICON_TIFF_DIR/icon-${size}.png" >/dev/null
   sips -s format tiff "$ICON_TIFF_DIR/icon-${size}.png" --out "$ICON_TIFF_DIR/icon-${size}.tiff" >/dev/null

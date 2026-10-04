@@ -11,12 +11,12 @@ export const metadata: Metadata = {
   keywords: ['AgentReadout', 'Codex', 'Claude', 'macOS', 'menu bar', 'Tokens', 'quota', 'open source'],
   icons: {
     icon: [
-      { url: `${basePath}/favicon.ico?v=2`, sizes: '32x32' },
-      { url: `${basePath}/favicon.svg?v=2`, type: 'image/svg+xml' },
-      { url: `${basePath}/favicon-32.png?v=2`, sizes: '32x32', type: 'image/png' },
-      { url: `${basePath}/favicon-16.png?v=2`, sizes: '16x16', type: 'image/png' },
+      { url: `${basePath}/favicon.ico?v=3`, sizes: '32x32' },
+      { url: `${basePath}/favicon.svg?v=3`, type: 'image/svg+xml' },
+      { url: `${basePath}/favicon-32.png?v=3`, sizes: '32x32', type: 'image/png' },
+      { url: `${basePath}/favicon-16.png?v=3`, sizes: '16x16', type: 'image/png' },
     ],
-    apple: [{ url: `${basePath}/apple-touch-icon.png?v=2`, sizes: '180x180', type: 'image/png' }],
+    apple: [{ url: `${basePath}/apple-touch-icon.png?v=3`, sizes: '180x180', type: 'image/png' }],
   },
 };
 

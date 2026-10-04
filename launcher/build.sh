@@ -10,7 +10,7 @@ RESOURCES_DIR="$CONTENTS_DIR/Resources"
 ICON_MASTER="$BUILD_DIR/AppIcon-master.png"
 ICON_TIFF="$BUILD_DIR/AppIcon.tiff"
 ICON_TIFF_DIR="$BUILD_DIR/IconTIFFs"
-ICON_SOURCE="$ROOT_DIR/../shared/CodexGaugeIcon.m"
+ICON_SOURCE="$ROOT_DIR/../assets/app-icon.png"
 
 rm -rf "$APP_DIR" "$ICON_TIFF_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$ICON_TIFF_DIR"
@@ -26,15 +26,7 @@ xcrun clang \
   "$ROOT_DIR/main.m" \
   -o "$MACOS_DIR/GaugeForCodexLauncher"
 
-xcrun clang \
-  -fobjc-arc \
-  -fno-modules \
-  -Wall -Wextra -Werror \
-  -mmacosx-version-min=12.0 \
-  -framework Cocoa \
-  "$ICON_SOURCE" \
-  -o "$BUILD_DIR/GenerateGaugeForCodexIcon"
-"$BUILD_DIR/GenerateGaugeForCodexIcon" "$ICON_MASTER"
+cp "$ICON_SOURCE" "$ICON_MASTER"
 for size in 16 32 48 128 256 512 1024; do
   sips -z "$size" "$size" "$ICON_MASTER" --out "$ICON_TIFF_DIR/icon-${size}.png" >/dev/null
   sips -s format tiff "$ICON_TIFF_DIR/icon-${size}.png" --out "$ICON_TIFF_DIR/icon-${size}.tiff" >/dev/null

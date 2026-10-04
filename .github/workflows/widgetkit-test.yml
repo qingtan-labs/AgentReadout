@@ -26,9 +26,10 @@ jobs:
           codesign --verify --deep --strict "quota-overlay/build/Gauge for Codex.app"
       - name: Verify release packaging
         run: |
-          ./package-release.sh 2.0.0
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' quota-overlay/Info.plist)"
+          ./package-release.sh "$VERSION"
           (cd release && shasum -a 256 -c SHA256SUMS)
-          unzip -p release/AgentReadout-2.0.0-Universal.zip 'AgentReadout.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/Info.plist' | plutil -lint -
+          unzip -p "release/AgentReadout-${VERSION}-Universal.zip" 'AgentReadout.app/Contents/PlugIns/GaugeForCodexWidget.appex/Contents/Info.plist' | plutil -lint -
       - name: Archive test app
         run: ditto -c -k --sequesterRsrc --keepParent "quota-overlay/build/Gauge for Codex.app" widget-test.zip
       - uses: actions/upload-artifact@v4
