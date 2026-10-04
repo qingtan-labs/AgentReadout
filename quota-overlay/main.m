@@ -42,7 +42,7 @@ static NSString * const QGHistoryKey = @"QuotaHistory24Hours";
 static NSString * const QGRecordHistoryKey = @"RecordQuotaHistory";
 static NSString * const QGQuotaAlertsKey = @"LowQuotaAlertsEnabled";
 static NSString * const QGAlertLedgerKey = @"QuotaAlertLedger";
-static NSString * const QGReleaseAPIURL = @"https://api.github.com/repos/qingtan-labs/GaugeForCodex/releases/latest";
+static NSString * const QGReleaseAPIURL = @"https://api.github.com/repos/qingtan-labs/AgentReadout/releases/latest";
 static NSTimeInterval const QGAutomaticUpdateInterval = 24.0 * 60.0 * 60.0;
 
 static NSString *QGAppearanceMode(void) {
@@ -3145,7 +3145,7 @@ static NSString *QGWidgetProviderModeName(QGDesktopWidgetProviderMode mode) {
                 ? manifestAsset[@"browser_download_url"] : @"";
             NSURL *manifestURL = [NSURL URLWithString:link];
             if (![manifestURL.scheme isEqual:@"https"] || ![manifestURL.host isEqual:@"github.com"] ||
-                ![manifestURL.path.lowercaseString hasPrefix:@"/qingtan-labs/gaugeforcodex/releases/download/"]) {
+                ![manifestURL.path.lowercaseString hasPrefix:@"/qingtan-labs/agentreadout/releases/download/"]) {
                 dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf failUpdateCheck:manual]; });
                 return;
             }

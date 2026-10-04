@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import Image from 'next/image';
 
 type Language = 'zh' | 'en';
-const repository = 'https://github.com/qingtan-labs/GaugeForCodex';
+const repository = 'https://github.com/qingtan-labs/AgentReadout';
 const release = `${repository}/releases/latest`;
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -19,6 +19,7 @@ const copy = {
     source: '查看 GitHub',
     compatibility: '适用于 macOS 12+ · Apple 芯片与 Intel',
     preview: '界面示意 · 数值仅供展示',
+    dragHint: '拖动，感受信息流动',
     remaining: '剩余额度',
     reset: '后重置',
     today: '今日 Token',
@@ -45,6 +46,7 @@ const copy = {
     widgetTitle: '抬眼就知道，还剩多少。',
     widgetBody: '额度与每日 Token 都支持小、中、大号原生组件。大号 Token 组件还能呈现累计用量、单日峰值与连续使用等指标。macOS 12–13 可使用悬浮组件。',
     widgetCaption: '组件示意 · WidgetKit 需要 macOS 14+',
+    widgetExamples: ['小号 · 额度', '中号 · 双服务', '大号 · 额度', '每日 Token'],
     privacyEyebrow: '隐私优先',
     privacyTitle: '只读必要数据，不碰你的对话。',
     privacyBody: '应用在本机读取 Codex 的额度与每日统计，以及你选择启用的 Claude 用量来源；不会读取提示词或聊天内容。没有开发者运营的账户、遥测或广告 SDK。',
@@ -67,6 +69,7 @@ const copy = {
     source: 'View on GitHub',
     compatibility: 'macOS 12+ · Apple silicon and Intel',
     preview: 'Interface preview · sample values',
+    dragHint: 'Drag to move the signal',
     remaining: 'Remaining',
     reset: 'until reset',
     today: 'Today’s Tokens',
@@ -93,6 +96,7 @@ const copy = {
     widgetTitle: 'One glance, and you know.',
     widgetBody: 'Quota and Daily Tokens both come in Small, Medium, and Large native widgets. The large Tokens widget adds lifetime usage, peak day, and streaks. A floating widget is available on macOS 12–13.',
     widgetCaption: 'Widget preview · WidgetKit requires macOS 14+',
+    widgetExamples: ['Small · quota', 'Medium · two services', 'Large · quota', 'Daily Tokens'],
     privacyEyebrow: 'Private by design',
     privacyTitle: 'Only the usage data. Never your chats.',
     privacyBody: 'The app reads Codex limits and daily statistics on your Mac, plus Claude sources you choose to enable. It does not read prompts or conversations. There is no developer-run account, telemetry, or ad SDK.',
@@ -133,10 +137,49 @@ function QuotaCard({ name, plan, amount, color, reset, remaining }: { name: stri
     <div className="quota-reset">{reset}</div>
   </div>;
 }
+function FeatureVisual({ index }: { index: number }) {
+  if (index === 0) return <div className="feature-demo feature-demo-quotas" aria-hidden="true"><div><span>Codex <small>Pro 5×</small></span><b>68%</b><i><em /></i></div><div><span>Claude <small>Pro</small></span><b>91%</b><i><em /></i></div></div>;
+  if (index === 1) return <div className="feature-demo feature-demo-widgets" aria-hidden="true"><span className="mini-menu"><i /><i /><i /></span><span className="mini-ring">68<span>%</span></span><span className="mini-chart"><i /><i /><i /><i /><i /></span></div>;
+  return <div className="feature-demo feature-demo-sync" aria-hidden="true"><span className="sync-pulse"><i /><i /><i /></span><div><b>09:41</b><span>SYNCED</span></div><span className="sync-check">✓</span></div>;
+}
 
 export default function Home() {
   const [language, setLanguage] = useState<Language>('zh');
+  const drag = useRef({ active: false, startX: 0, startY: 0, x: 0, y: 0, frame: 0 });
   const t = copy[language];
+  const moveSignal = (element: HTMLDivElement, x: number, y: number) => {
+    window.cancelAnimationFrame(drag.current.frame);
+    drag.current.frame = window.requestAnimationFrame(() => {
+      element.style.setProperty('--signal-x', `${x}px`);
+      element.style.setProperty('--signal-y', `${y}px`);
+    });
+  };
+  const onSignalDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    drag.current.active = true;
+    drag.current.startX = event.clientX - drag.current.x;
+    drag.current.startY = event.clientY - drag.current.y;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.classList.add('is-dragging');
+  };
+  const onSignalMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const element = event.currentTarget;
+    if (drag.current.active) {
+      drag.current.x = Math.max(-95, Math.min(95, event.clientX - drag.current.startX));
+      drag.current.y = Math.max(-70, Math.min(70, event.clientY - drag.current.startY));
+      moveSignal(element, drag.current.x, drag.current.y);
+      return;
+    }
+    const rect = element.getBoundingClientRect();
+    moveSignal(element, ((event.clientX - rect.left) / rect.width - .5) * 18 + drag.current.x, ((event.clientY - rect.top) / rect.height - .5) * 18 + drag.current.y);
+  };
+  const onSignalUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    drag.current.active = false;
+    event.currentTarget.classList.remove('is-dragging');
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+  useEffect(() => () => window.cancelAnimationFrame(drag.current.frame), []);
   useEffect(() => {
     const saved = window.localStorage.getItem('agentreadout-language');
     const preferred = saved === 'en' || saved === 'zh' ? saved : navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
@@ -171,10 +214,10 @@ export default function Home() {
     </header>
     <section className="hero content-width">
       <div className="hero-copy" data-reveal><SectionLabel>{t.badge}</SectionLabel><h1>{t.title}<br /><em>{t.titleAccent}</em></h1><p>{t.intro}</p><div className="hero-actions"><a className="button-primary" href={release} target="_blank" rel="noreferrer"><DownloadIcon />{t.download}<ArrowIcon /></a><a className="button-secondary" href={repository} target="_blank" rel="noreferrer">{t.source}<ArrowIcon /></a></div><div className="compatibility"><span className="compatibility-check">✓</span>{t.compatibility}</div></div>
-      <div className="hero-visual" data-reveal><div className="visual-halo" aria-hidden="true" /><div className="visual-orbit orbit-a" aria-hidden="true" /><div className="visual-orbit orbit-b" aria-hidden="true" /><div className="app-window"><div className="window-toolbar"><div className="traffic"><i /><i /><i /></div><span>AgentReadout</span><span className="toolbar-time">09:41</span></div><div className="window-content"><div className="window-title"><Brand compact /><span className="live-pill"><i /> LIVE</span></div><div className="window-subtitle">{t.remaining}</div><QuotaCard name="Codex" plan="Pro 5×" amount={68} color="mint" reset={`4h 32m ${t.reset}`} remaining="7d" /><QuotaCard name="Claude" plan="Pro" amount={91} color="coral" reset={`2h 18m ${t.reset}`} remaining="5h" /><div className="window-footer"><span>{t.today}</span><strong>2.4M</strong><div className="sparkline" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></div></div></div></div><div className="floating-chip chip-quota"><span className="chip-ring">68%</span><span>Codex <small>7d</small></span></div><div className="preview-caption">{t.preview}</div></div>
+      <div className="hero-visual" data-reveal><div className="visual-halo" aria-hidden="true" /><div className="visual-orbit orbit-a" aria-hidden="true" /><div className="visual-orbit orbit-b" aria-hidden="true" /><div className="app-window"><div className="window-toolbar"><div className="traffic"><i /><i /><i /></div><span>AgentReadout</span><span className="toolbar-time">09:41</span></div><div className="window-content"><div className="window-title"><Brand compact /><span className="live-pill"><i /> LIVE</span></div><div className="window-subtitle">{t.remaining}</div><QuotaCard name="Codex" plan="Pro 5×" amount={68} color="mint" reset={`4h 32m ${t.reset}`} remaining="7d" /><QuotaCard name="Claude" plan="Pro" amount={91} color="coral" reset={`2h 18m ${t.reset}`} remaining="5h" /><div className="window-footer"><span>{t.today}</span><strong>2.4M</strong><div className="sparkline" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></div></div></div></div><div className="signal-field" aria-hidden="true" onPointerDown={onSignalDown} onPointerMove={onSignalMove} onPointerUp={onSignalUp} onPointerCancel={onSignalUp}><span className="signal-node signal-node-a">AI</span><span className="signal-node signal-node-b">TOKEN</span><span className="signal-node signal-node-c">68%</span><span className="signal-node signal-node-d">●</span><span className="signal-node signal-node-e">CODEX</span><span className="signal-node signal-node-f">●</span></div><div className="preview-caption">{t.preview} · {t.dragHint}</div></div>
     </section>
-    <section className="intro-strip content-width" data-reveal><div><SectionLabel>AGENTREADOUT / 02</SectionLabel><h2>{t.overview}</h2><p>{t.overviewBody}</p></div><div className="intro-metrics"><span><b>02</b> Codex + Claude</span><span><b>03</b> {language === 'zh' ? '种组件尺寸' : 'widget sizes'}</span><span><b>00</b> {language === 'zh' ? '遥测' : 'telemetry'}</span></div></section>
-    <section className="features-section content-width" id="features"><div className="section-heading" data-reveal><SectionLabel>{t.featureEyebrow}</SectionLabel><h2>{t.featureTitle}</h2></div><div className="feature-grid">{t.features.map((feature, index) => <article className="feature-card" data-reveal key={feature[0]}><span className="feature-number">0{index + 1}</span><div className={`feature-symbol feature-symbol-${index + 1}`} aria-hidden="true"><i /><i /><i /></div><h3>{feature[0]}</h3><p>{feature[1]}</p></article>)}</div></section>
+    <section className="intro-strip content-width" data-reveal><div><SectionLabel>AGENTREADOUT</SectionLabel><h2>{t.overview}</h2><p>{t.overviewBody}</p></div><div className="intro-orbit" aria-hidden="true"><span>Codex</span><i /> <span>Claude</span></div></section>
+    <section className="features-section content-width" id="features"><div className="section-heading" data-reveal><SectionLabel>{t.featureEyebrow}</SectionLabel><h2>{t.featureTitle}</h2></div><div className="feature-grid">{t.features.map((feature, index) => <article className="feature-card" data-reveal key={feature[0]}><div className="feature-top"><span className="feature-number">0{index + 1}</span><span className="feature-arrow" aria-hidden="true">↗</span></div><FeatureVisual index={index} /><h3>{feature[0]}</h3><p>{feature[1]}</p></article>)}</div></section>
     <section className="token-section" id="tokens">
       <div className="token-inner content-width">
         <div className="token-copy" data-reveal>
@@ -198,9 +241,9 @@ export default function Home() {
         </div>
       </div>
     </section>
-    <section className="widget-section content-width"><div className="widget-demo" data-reveal><div className="widget-small"><div className="widget-heading"><Image src={`${basePath}/brand-icon.png?v=3`} alt="" width={28} height={28} unoptimized /><span>AgentReadout</span></div><div className="widget-ring"><strong>68%</strong></div><div className="widget-service">Codex <span>7d</span></div></div><div className="widget-medium"><div className="widget-heading"><Image src={`${basePath}/brand-icon.png?v=3`} alt="" width={28} height={28} unoptimized /><span>{t.today}</span></div><div className="widget-main-value">2.4<span>M</span></div><div className="widget-mini-bars" aria-hidden="true">{bars.map((height, index) => <i key={index} style={{ height: `${Math.max(height, 20)}%` }} />)}</div><div className="widget-range">{t.week}</div></div><span className="widget-caption">{t.widgetCaption}</span></div><div className="widget-copy" data-reveal><SectionLabel>{t.widgetEyebrow}</SectionLabel><h2>{t.widgetTitle}</h2><p>{t.widgetBody}</p></div></section>
+    <section className="widget-section content-width"><div className="widget-demo" data-reveal><div className="widget-gallery"><div className="widget-sample widget-sample-small"><div className="widget-sample-top"><Image src={`${basePath}/brand-icon.png?v=3`} alt="" width={23} height={23} unoptimized /><b>Codex</b><span className="widget-sample-label">{t.widgetExamples[0]}</span></div><div className="widget-sample-ring">68%</div><small>7d · Pro 5×</small></div><div className="widget-sample widget-sample-medium"><div className="widget-sample-top"><Image src={`${basePath}/brand-icon.png?v=3`} alt="" width={23} height={23} unoptimized /><b>AgentReadout</b><span className="widget-sample-label">{t.widgetExamples[1]}</span></div><div className="widget-sample-row"><span>Codex <b>68%</b></span><i><em /></i></div><div className="widget-sample-row widget-sample-coral"><span>Claude <b>91%</b></span><i><em /></i></div></div><div className="widget-sample widget-sample-large"><div className="widget-sample-top"><Image src={`${basePath}/brand-icon.png?v=3`} alt="" width={23} height={23} unoptimized /><b>{t.remaining}</b><span className="widget-sample-label">{t.widgetExamples[2]}</span></div><div className="widget-large-body"><div className="widget-sample-ring">68%</div><div><b>Codex · Pro 5×</b><span>7d · 4h 32m {t.reset}</span><i><em /></i></div></div><div className="widget-large-foot">Claude · Pro <b>91%</b></div></div><div className="widget-sample widget-sample-token"><div className="widget-sample-top"><Image src={`${basePath}/brand-icon.png?v=3`} alt="" width={23} height={23} unoptimized /><b>{t.today}</b><span className="widget-sample-label">{t.widgetExamples[3]}</span></div><strong>2.4<span>M</span></strong><div className="widget-mini-bars" aria-hidden="true">{bars.map((height, index) => <i key={index} style={{ height: `${Math.max(height, 20)}%` }} />)}</div></div></div><span className="widget-caption">{t.widgetCaption}</span></div><div className="widget-copy" data-reveal><SectionLabel>{t.widgetEyebrow}</SectionLabel><h2>{t.widgetTitle}</h2><p>{t.widgetBody}</p></div></section>
     <section className="privacy-section" id="privacy"><div className="privacy-inner content-width"><div className="privacy-copy" data-reveal><SectionLabel>{t.privacyEyebrow}</SectionLabel><h2>{t.privacyTitle}</h2><p>{t.privacyBody}</p></div><ul className="privacy-list" data-reveal>{t.privacyNotes.map(note => <li key={note}><span>✓</span>{note}</li>)}</ul></div></section>
-    <section className="cta-section content-width" id="download" data-reveal><div className="cta-glow" aria-hidden="true" /><SectionLabel>{t.ctaEyebrow}</SectionLabel><h2>{t.ctaTitle}</h2><p>{t.ctaBody}</p><div className="hero-actions"><a className="button-primary" href={release} target="_blank" rel="noreferrer"><DownloadIcon />{t.download}<ArrowIcon /></a><a className="button-secondary" href={repository} target="_blank" rel="noreferrer">{t.source}<ArrowIcon /></a></div><details className="source-details"><summary>{t.codeTitle}</summary><pre>git clone https://github.com/qingtan-labs/GaugeForCodex.git<br />cd GaugeForCodex/quota-overlay<br />./install.sh</pre></details></section>
+    <section className="cta-section content-width" id="download" data-reveal><div className="cta-glow" aria-hidden="true" /><SectionLabel>{t.ctaEyebrow}</SectionLabel><h2>{t.ctaTitle}</h2><p>{t.ctaBody}</p><div className="hero-actions"><a className="button-primary" href={release} target="_blank" rel="noreferrer"><DownloadIcon />{t.download}<ArrowIcon /></a><a className="button-secondary" href={repository} target="_blank" rel="noreferrer">{t.source}<ArrowIcon /></a></div><details className="source-details"><summary>{t.codeTitle}</summary><pre>git clone https://github.com/qingtan-labs/AgentReadout.git<br />cd AgentReadout/quota-overlay<br />./install.sh</pre></details></section>
     <footer className="site-footer content-width"><div><Brand /><p>{t.footnote}</p></div><nav aria-label="Footer"><a href={repository} target="_blank" rel="noreferrer">GitHub</a><a href={`${repository}/blob/main/PRIVACY.md`} target="_blank" rel="noreferrer">{t.privacyLink}</a><a href={`${repository}/blob/main/LICENSE`} target="_blank" rel="noreferrer">{t.license}</a></nav><span>© 2026 qingtan-labs</span></footer>
   </main>;
 }

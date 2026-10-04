@@ -43,10 +43,10 @@ jobs:
       - name: Build static website
         run: npm run build
         env:
-          NEXT_PUBLIC_BASE_PATH: /GaugeForCodex
+          NEXT_PUBLIC_BASE_PATH: /AgentReadout
 
       - name: Normalize GitHub Pages assets
-        run: cp -R dist/client/GaugeForCodex/_next dist/client/_next
+        run: cp -R dist/client/AgentReadout/_next dist/client/_next
 
       - name: Upload website
         uses: actions/upload-pages-artifact@v3

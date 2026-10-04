@@ -38,7 +38,7 @@ AgentReadout does not collect or persist prompts or conversation content, or rea
 
 ## Network behavior
 
-AgentReadout makes no analytics or telemetry requests. When update checking is enabled, it contacts the public GitHub Releases API for `qingtan-labs/GaugeForCodex` at most once a day. A newer release's Universal ZIP and `SHA256SUMS` are downloaded only for automatic installation. The app compares the published SHA-256 value, expected bundle identifier and version, and the bundle's code-signing integrity before replacement. Automatic checking can be disabled from the menu.
+AgentReadout makes no analytics or telemetry requests. When update checking is enabled, it contacts the public GitHub Releases API for `qingtan-labs/AgentReadout` at most once a day. A newer release's Universal ZIP and `SHA256SUMS` are downloaded only for automatic installation. The app compares the published SHA-256 value, expected bundle identifier and version, and the bundle's code-signing integrity before replacement. Automatic checking can be disabled from the menu.
 
 On macOS 14+, native widgets ask the running menu-bar app for normalized data over `127.0.0.1:38429`. The server listens only on the local loopback interface and serves quota percentages, window durations, reset timestamps, last-update time, recognized membership labels, the latest seven Codex daily Token aggregates and the five numeric official summary metrics. It does not serve credentials, account identifiers, email addresses, prompts, conversation content, or raw Codex responses. Other programs running under the same Mac may reach this local endpoint, so these quota and Token aggregates should not be treated as secret data.
 

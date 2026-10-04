@@ -9,5 +9,5 @@ Before opening an issue:
 
 Please do not attach authentication files, API keys, cookies, prompts, or conversation content.
 
-- [Report a bug](https://github.com/qingtan-labs/GaugeForCodex/issues/new?template=bug_report.yml)
-- [Request a feature](https://github.com/qingtan-labs/GaugeForCodex/issues/new?template=feature_request.yml)
+- [Report a bug](https://github.com/qingtan-labs/AgentReadout/issues/new?template=bug_report.yml)
+- [Request a feature](https://github.com/qingtan-labs/AgentReadout/issues/new?template=feature_request.yml)

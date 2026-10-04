@@ -2,7 +2,7 @@
 
 AgentReadout 是一款开源、原生的 macOS 菜单栏工具，集中展示 Codex 与 Claude 的剩余额度、重置时间，以及可用的每日 Token 用量。它曾叫 Gauge for Codex；为保证升级后设置和桌面组件继续可用，内部 bundle ID、URL Scheme 和部分构建路径暂时保留旧名称。
 
-[官网](https://qingtan-labs.github.io/GaugeForCodex/) · [下载最新版本](https://github.com/qingtan-labs/GaugeForCodex/releases/latest) · [English](README.md)
+[官网](https://qingtan-labs.github.io/AgentReadout/) · [下载最新版本](https://github.com/qingtan-labs/AgentReadout/releases/latest) · [English](README.md)
 
 ## 功能
 
@@ -15,15 +15,15 @@ AgentReadout 是一款开源、原生的 macOS 菜单栏工具，集中展示 Co
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/qingtan-labs/GaugeForCodex/releases/latest) 下载 Universal DMG 或 ZIP。支持 macOS 12 及以上的 Apple 芯片和 Intel Mac。原生 WidgetKit 桌面组件需要 macOS 14 及以上。
+从 [GitHub Releases](https://github.com/qingtan-labs/AgentReadout/releases/latest) 下载 Universal DMG 或 ZIP。支持 macOS 12 及以上的 Apple 芯片和 Intel Mac。原生 WidgetKit 桌面组件需要 macOS 14 及以上。
 
 发布包采用 ad-hoc 签名，**未经过 Apple 公证**。首次运行如果被 Gatekeeper 拦截，请在系统设置的「隐私与安全性」中确认来源后手动允许。请只从本仓库的 Release 下载并核对随包提供的 SHA-256 校验值。
 
 从源码安装：
 
 ```sh
-git clone https://github.com/qingtan-labs/GaugeForCodex.git
-cd GaugeForCodex/quota-overlay
+git clone https://github.com/qingtan-labs/AgentReadout.git
+cd AgentReadout/quota-overlay
 ./install.sh
 ```
 

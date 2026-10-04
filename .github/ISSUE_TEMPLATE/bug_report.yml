@@ -17,7 +17,7 @@ body:
     id: versions
     attributes:
       label: AgentReadout and Codex versions
-      placeholder: AgentReadout 2.0.1; Codex version…
+      placeholder: AgentReadout 2.0.0; Codex version…
     validations:
       required: true
   - type: textarea

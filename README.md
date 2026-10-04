@@ -2,7 +2,7 @@
 
 AgentReadout is an open-source, native macOS menu bar app for Codex and Claude quota, reset times, and available daily Token usage. Previously called Gauge for Codex, it keeps the existing bundle identifier, URL scheme, and some build paths so settings and widgets survive an upgrade.
 
-[Website](https://qingtan-labs.github.io/GaugeForCodex/) · [Latest download](https://github.com/qingtan-labs/GaugeForCodex/releases/latest) · [简体中文](README.zh-Hans.md)
+[Website](https://qingtan-labs.github.io/AgentReadout/) · [Latest download](https://github.com/qingtan-labs/AgentReadout/releases/latest) · [简体中文](README.zh-Hans.md)
 
 ## Features
 
@@ -15,15 +15,15 @@ AgentReadout is an open-source, native macOS menu bar app for Codex and Claude q
 
 ## Install
 
-Download the Universal DMG or ZIP from [GitHub Releases](https://github.com/qingtan-labs/GaugeForCodex/releases/latest). Apple silicon and Intel Macs on macOS 12+ are supported. Native WidgetKit desktop widgets require macOS 14+.
+Download the Universal DMG or ZIP from [GitHub Releases](https://github.com/qingtan-labs/AgentReadout/releases/latest). Apple silicon and Intel Macs on macOS 12+ are supported. Native WidgetKit desktop widgets require macOS 14+.
 
 Release bundles are **ad-hoc signed, not Apple notarized**. If Gatekeeper blocks the first launch, review the app's origin and allow it manually in System Settings → Privacy & Security. Download only from this repository's Releases and verify the included SHA-256 checksums.
 
 Build and install from source:
 
 ```sh
-git clone https://github.com/qingtan-labs/GaugeForCodex.git
-cd GaugeForCodex/quota-overlay
+git clone https://github.com/qingtan-labs/AgentReadout.git
+cd AgentReadout/quota-overlay
 ./install.sh
 ```
 
