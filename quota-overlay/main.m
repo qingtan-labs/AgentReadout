@@ -1674,13 +1674,24 @@ static NSString *QGWidgetProviderModeName(QGDesktopWidgetProviderMode mode) {
 - (NSString *)menuResetTextForWindow:(NSDictionary *)window {
     NSTimeInterval resetAt = [window[@"resetsAt"] doubleValue];
     if (resetAt <= 0) return [QGL(@"quota.resetUnknown") stringByAppendingString:@" ⓘ"];
-    if (resetAt <= NSDate.date.timeIntervalSince1970) return QGL(@"quota.awaitingRefreshShort");
+    NSTimeInterval remaining = resetAt - NSDate.date.timeIntervalSince1970;
+    if (remaining <= 0) return QGL(@"quota.awaitingRefreshShort");
     NSDateFormatter *formatter = [NSDateFormatter new];
     formatter.locale = NSLocale.currentLocale;
     formatter.timeZone = NSTimeZone.localTimeZone;
     [formatter setLocalizedDateFormatFromTemplate:@"Mdjm"];
-    return [NSString stringWithFormat:QGL(@"quota.resetAtShort"),
+    return [NSString stringWithFormat:QGL(@"quota.resetIn"),
+            [self relativeDuration:remaining maximumUnits:2],
             [formatter stringFromDate:[NSDate dateWithTimeIntervalSince1970:resetAt]]];
+}
+
+- (NSString *)menuCompactResetTextForWindow:(NSDictionary *)window {
+    NSTimeInterval resetAt = [window[@"resetsAt"] doubleValue];
+    if (resetAt <= 0) return [self menuResetTextForWindow:window];
+    NSTimeInterval remaining = resetAt - NSDate.date.timeIntervalSince1970;
+    if (remaining <= 0) return QGL(@"quota.awaitingRefreshShort");
+    return [NSString stringWithFormat:QGL(@"widget.resetIn"),
+            [self relativeDuration:remaining maximumUnits:2]];
 }
 
 - (NSString *)resetHelpForWindow:(NSDictionary *)window {
@@ -1846,7 +1857,8 @@ static NSString *QGWidgetProviderModeName(QGDesktopWidgetProviderMode mode) {
             QGL(claude && [_claudeSourceKind isEqual:@"desktop"] ? @"quota.resetCacheHelp" : @"quota.resetUnavailableHelp");
         [entries addObject:@{@"title": [self windowLabel:window], @"remaining": window[@"remainingPercent"],
             @"percent": [self percentageString:[window[@"remainingPercent"] doubleValue]],
-            @"reset": [self menuResetTextForWindow:window], @"help": help}];
+            @"reset": [self menuResetTextForWindow:window],
+            @"resetCompact": [self menuCompactResetTextForWindow:window], @"help": help}];
     }
     NSString *source = claude ? QGL([_claudeSourceKind isEqual:@"desktop"] ? @"sync.claudeDesktopCache" : @"sync.claudeCodeLive") : QGL(@"sync.openaiLive");
     if (state == QGSyncStateIdle) source = claude ? QGL(@"sync.cached") : (_syncDetail ?: QGL(@"sync.cached"));

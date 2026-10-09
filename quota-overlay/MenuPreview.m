@@ -130,6 +130,27 @@ int main(int argc, const char *argv[]) {
             interactionChecks++; if (!pass) interactionFailures++;
             printf("%s %s\n", pass ? "PASS" : "FAIL", name.UTF8String);
         };
+        NSDictionary *weeklyEntry = [delegate menuCardForProvider:@"codex" enabled:YES][@"entries"][1];
+        NSString *weeklyCountdown = [delegate relativeDuration:
+            [codex[1][@"resetsAt"] doubleValue] - NSDate.date.timeIntervalSince1970 maximumUnits:2];
+        check([weeklyEntry[@"reset"] containsString:weeklyCountdown] &&
+            [weeklyEntry[@"reset"] containsString:@" · "] &&
+            [weeklyEntry[@"resetCompact"] containsString:weeklyCountdown] &&
+            ![weeklyEntry[@"resetCompact"] containsString:@" · "],
+            @"menu bar shows relative weekly reset; rings prioritize countdown over date");
+        NSArray *claudeEntries = [delegate menuCardForProvider:@"claude" enabled:YES][@"entries"];
+        NSString *claudeCountdown = [delegate relativeDuration:
+            [claude[1][@"resetsAt"] doubleValue] - NSDate.date.timeIntervalSince1970 maximumUnits:2];
+        check([claudeEntries[1][@"reset"] containsString:claudeCountdown] &&
+            [claudeEntries[1][@"resetCompact"] containsString:claudeCountdown] &&
+            [claudeEntries[0][@"reset"] containsString:QGL(@"quota.resetUnknown")],
+            @"Claude shows a real countdown but never guesses a missing reset time");
+        NSDictionary *expiredWindow = window(51, 10080, now-60);
+        NSDictionary *unknownWindow = window(51, 10080, 0);
+        check([[delegate menuResetTextForWindow:expiredWindow] isEqual:QGL(@"quota.awaitingRefreshShort")] &&
+            [[delegate menuCompactResetTextForWindow:expiredWindow] isEqual:QGL(@"quota.awaitingRefreshShort")] &&
+            [[delegate menuResetTextForWindow:unknownWindow] containsString:QGL(@"quota.resetUnknown")],
+            @"expired or unknown reset never displays a fabricated countdown");
         NSURL *dailyRoute = [NSURL URLWithString:@"gaugeforcodex://insights/daily-token"];
         check(QGIsDailyTokenURL(dailyRoute) &&
             !QGIsDailyTokenURL([NSURL URLWithString:@"gaugeforcodex://insights/quota"]) &&

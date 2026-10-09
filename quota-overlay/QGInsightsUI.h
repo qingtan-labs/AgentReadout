@@ -244,7 +244,8 @@ static NSButton *QGSymbolButton(NSString *symbol, NSString *label, NSRect frame)
             [ring setAccessibilityHelp:entry[@"help"]];
             [self addSubview:ring];
             QGInsightLabel(self, entry[@"title"], NSMakeRect(detailX, rowY + (wide ? 6 : 1), detailWidth, 17), 11, NO);
-            NSTextField *reset = QGInsightLabel(self, entry[@"reset"], NSMakeRect(detailX, rowY + (wide ? 28 : 21), detailWidth, 28), 10, YES);
+            NSString *resetText = wide ? entry[@"reset"] : (entry[@"resetCompact"] ?: entry[@"reset"]);
+            NSTextField *reset = QGInsightLabel(self, resetText, NSMakeRect(detailX, rowY + (wide ? 28 : 21), detailWidth, 28), 10, YES);
             reset.maximumNumberOfLines = 2; reset.lineBreakMode = NSLineBreakByWordWrapping;
             reset.toolTip = entry[@"help"]; [reset setAccessibilityHelp:entry[@"help"]];
         }
