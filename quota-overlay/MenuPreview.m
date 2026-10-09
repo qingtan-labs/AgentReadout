@@ -313,7 +313,7 @@ int main(int argc, const char *argv[]) {
             @"codexDetail": QGL(@"settings.codexSource"), @"claudeDetail": QGL(@"settings.claudeSource"),
             @"automaticUpdates": @YES, @"installing": @NO, @"updateBusy": @NO,
             @"updateButton": QGL(@"menu.checkUpdates"), @"updateStatus": QGL(@"settings.updateOnDemand"),
-            @"version": @"AgentReadout · 2.0.0 (build 34)"};
+            @"version": @"AgentReadout · 2.0.0 (build 35)"};
         settings.configuration = settingsModel;
         check(settings.loginButton.action == @selector(toggleLoginItem:) && settings.loginButton.state == NSControlStateValueOff,
             @"login startup is an explicit default-off setting");

@@ -17,6 +17,6 @@ targets:
         INFOPLIST_FILE: Info.plist
         GENERATE_INFOPLIST_FILE: NO
         MARKETING_VERSION: 2.0.0
-        CURRENT_PROJECT_VERSION: 34
+        CURRENT_PROJECT_VERSION: 35
         SKIP_INSTALL: YES
     scheme: {}
