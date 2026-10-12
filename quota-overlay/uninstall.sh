@@ -1,7 +1,8 @@
 #!/bin/zsh
 set -euo pipefail
 
-APP_TARGET="$HOME/Applications/Gauge for Codex.app"
+APP_TARGET="$HOME/Applications/AgentReadout.app"
+LEGACY_APP_TARGET="$HOME/Applications/Gauge for Codex.app"
 AGENT_TARGET="$HOME/Library/LaunchAgents/com.qingtanlabs.gaugeforcodex.plist"
 AGENT_LABEL="com.qingtanlabs.gaugeforcodex"
 GUI_DOMAIN="gui/$(id -u)"
@@ -13,7 +14,10 @@ pkill -x GaugeForCodex 2>/dev/null || true
 mkdir -p "$TRASH_DIR"
 
 if [[ -e "$APP_TARGET" ]]; then
-  mv "$APP_TARGET" "$TRASH_DIR/Gauge for Codex-$STAMP.app"
+  mv "$APP_TARGET" "$TRASH_DIR/AgentReadout-$STAMP.app"
+fi
+if [[ -e "$LEGACY_APP_TARGET" ]]; then
+  mv "$LEGACY_APP_TARGET" "$TRASH_DIR/Gauge for Codex-$STAMP.app"
 fi
 if [[ -e "$AGENT_TARGET" ]]; then
   mv "$AGENT_TARGET" "$TRASH_DIR/com.qingtanlabs.gaugeforcodex-$STAMP.plist"

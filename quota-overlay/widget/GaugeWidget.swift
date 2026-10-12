@@ -110,7 +110,7 @@ struct DailyUsageSnapshot: Codable {
     }
 
     func isStale(reference: Date) -> Bool {
-        stale == true || updatedAt <= 0 || reference.timeIntervalSince1970 - updatedAt > 60 * 60
+        stale == true || updatedAt <= 0 || reference.timeIntervalSince1970 - updatedAt > 3 * 60 * 60
     }
 }
 
@@ -207,7 +207,28 @@ func quotaTimelineEntries(snapshot: QuotaSnapshot, now: Date) -> [QuotaEntry] {
     return dates.sorted().map { QuotaEntry(date: $0, snapshot: snapshot) }
 }
 
+// Keep the calendar window moving across the next midnight, but do not give
+// WidgetKit a multi-day timeline of old data to keep displaying.
+func dailyTokenTimelineEntries(snapshot: QuotaSnapshot, now: Date) -> [QuotaEntry] {
+    let calendar = Calendar.current
+    var dates = Set([now])
+    let today = calendar.startOfDay(for: now)
+    let nextMidnight = calendar.date(byAdding: .day, value: 1, to: today)
+    if let nextMidnight { dates.insert(nextMidnight) }
+    if let nextMidnight, let updatedAt = snapshot.dailyUsage?.updatedAt, updatedAt > 0 {
+        let staleAt = Date(timeIntervalSince1970: updatedAt + 3 * 3600 + 1)
+        if staleAt > now && staleAt < nextMidnight { dates.insert(staleAt) }
+    }
+    return dates.sorted().map { QuotaEntry(date: $0, snapshot: snapshot) }
+}
+
+private enum WidgetTimelineKind { case quota, dailyToken }
+
 private struct QuotaProvider: TimelineProvider {
+    let kind: WidgetTimelineKind
+
+    init(kind: WidgetTimelineKind = .quota) { self.kind = kind }
+
     func placeholder(in context: Context) -> QuotaEntry {
         QuotaEntry(date: Date(), snapshot: .preview)
     }
@@ -230,8 +251,11 @@ private struct QuotaProvider: TimelineProvider {
                 snapshot = cachedSnapshot()
             }
             let now = Date()
-            completion(Timeline(entries: quotaTimelineEntries(snapshot: snapshot, now: now),
-                                policy: .after(now.addingTimeInterval(5 * 60))))
+            let entries = kind == .dailyToken
+                ? dailyTokenTimelineEntries(snapshot: snapshot, now: now)
+                : quotaTimelineEntries(snapshot: snapshot, now: now)
+            let refreshInterval: TimeInterval = kind == .dailyToken ? 2 * 3600 : 30 * 60
+            completion(Timeline(entries: entries, policy: .after(now.addingTimeInterval(refreshInterval))))
         }.resume()
     }
 
@@ -1208,7 +1232,7 @@ struct CodexQuotaWidget: Widget {
 
 struct CodexDailyTokenWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: dailyWidgetKind, provider: QuotaProvider()) { entry in
+        StaticConfiguration(kind: dailyWidgetKind, provider: QuotaProvider(kind: .dailyToken)) { entry in
             DailyTokenWidgetView(entry: entry)
         }
         .configurationDisplayName(Copy.current.dailyTitle)

@@ -43,7 +43,7 @@ AgentReadout 会短暂启动 Codex 随附的 `codex app-server --stdio`，调用
     ./build.sh
     ./install.sh
 
-安装位置为 `~/Applications/Gauge for Codex.app`，登录启动项名称为 `com.qingtanlabs.gaugeforcodex`。安装完成会打开应用；新安装不默认登录自启，已有用户的启动选择在升级时保留。
+安装位置为 `~/Applications/AgentReadout.app`，会迁移单份旧路径 `~/Applications/Gauge for Codex.app`；登录启动项名称为 `com.qingtanlabs.gaugeforcodex`。安装完成会打开应用；新安装不默认登录自启，已有用户的启动选择在升级时保留。
 
 「设置 → 通用 → 额度样式」可切换进度条 / 环形，统一应用于下拉卡片、原生桌面组件和悬浮组件；菜单栏紧凑显示不受影响。默认进度条，选择持久保存；WidgetKit 的实际刷新时机由系统控制。
 

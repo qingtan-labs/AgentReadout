@@ -27,7 +27,7 @@ cd AgentReadout/quota-overlay
 ./install.sh
 ```
 
-源码安装脚本目前仍使用兼容路径 `~/Applications/Gauge for Codex.app`。新发布的 DMG/ZIP 内应用显示为 `AgentReadout.app`；旧版自动升级会沿用原安装路径，但应用界面名称已更新。登录自启默认关闭，升级保留已有选择。
+源码安装脚本现在安装到 `~/Applications/AgentReadout.app`，并可迁移单份旧路径 `~/Applications/Gauge for Codex.app`。发布的 DMG/ZIP 也包含 `AgentReadout.app`；自动更新在迁移前仍沿用原安装路径。登录自启默认关闭，升级保留已有选择。
 
 ## 数据来源与隐私
 

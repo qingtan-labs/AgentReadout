@@ -1348,9 +1348,13 @@ static NSString *QGWidgetProviderModeName(QGDesktopWidgetProviderMode mode) {
 @property NSDictionary *availableUpdateManifest;
 @property NSURL *availableUpdateURL;
 @property NSDictionary *lastWidgetContent;
+@property NSDictionary *lastDailyWidgetContent;
 @property NSTimer *nativeWidgetReloadTimer;
 @property NSDate *lastNativeWidgetReload;
+@property NSTimer *nativeDailyWidgetReloadTimer;
+@property NSDate *lastNativeDailyWidgetReload;
 - (void)publishWidgetSnapshot;
+- (void)requestNativeDailyWidgetReload;
 - (void)openPendingDailyTokenIfReady;
 - (void)refreshDailyUsageForced:(BOOL)forced;
 - (void)reloadLocalizedInterface;
@@ -1482,6 +1486,7 @@ static NSString *QGWidgetProviderModeName(QGDesktopWidgetProviderMode mode) {
     [_displayTimer invalidate];
     [_updateTimer invalidate];
     [_nativeWidgetReloadTimer invalidate];
+    [_nativeDailyWidgetReloadTimer invalidate];
     [_widgetServer stop];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [NSWorkspace.sharedWorkspace.notificationCenter removeObserver:self];
@@ -2302,17 +2307,30 @@ static NSString *QGWidgetProviderModeName(QGDesktopWidgetProviderMode mode) {
                            claudeEnabled:self.hasClaudeDisplayData
                      legacyClaudeSupport:QGNativeWidgetSupportsClaude()];
     [self refreshDesktopWidget];
-    // Timestamp-only updates don't need to spend the system's reload budget.
+    // Quota changes must not spend the Daily Token widget's refresh budget.
     NSDictionary *content = @{@"codex": _quotaWindows ?: @[], @"claude": _claudeWindows ?: @[],
         @"codexPlan": _codexPlanName ?: @"", @"claudePlan": _claudePlanName ?: @"",
         @"codexFailed": @(_syncState == QGSyncStateFailed), @"claudeFailed": @(_claudeSyncState == QGSyncStateFailed),
         @"provider": _selectedProvider ?: @"codex", @"mode": @(_desktopWidgetProviderMode),
         @"quotaStyle": [NSUserDefaults.standardUserDefaults stringForKey:QGQuotaStyleKey] ?: @"bar",
         @"appearanceMode": QGAppearanceMode(), @"language": QGEffectiveLanguage(),
-        @"claudeEnabled": @(self.hasClaudeDisplayData), @"dailyUsage": dailyUsage};
+        @"claudeEnabled": @(self.hasClaudeDisplayData)};
     if (![_lastWidgetContent isEqual:content]) {
         _lastWidgetContent = content;
         [self requestNativeWidgetReload:NO];
+    }
+    // Refresh for changed values, day rollover, or a two-hour sync-status
+    // checkpoint. Identical totals from a new fetch need no immediate reload.
+    NSDictionary *dailyContent = @{@"days": dailyUsage[@"days"] ?: @[],
+        @"summary": dailyUsage[@"summary"] ?: @{}, @"latest": dailyUsage[@"latest"] ?: @"",
+        @"available": dailyUsage[@"available"] ?: @NO, @"stale": dailyUsage[@"stale"] ?: @NO,
+        @"syncCheckpoint": @([dailyUsage[@"updatedAt"] longLongValue] / 7200),
+        @"appearanceMode": QGAppearanceMode(), @"language": QGEffectiveLanguage()};
+    // The first snapshot is published before the initial official fetch.
+    // Do not spend a reload on that empty placeholder and delay real data.
+    if (_usageStatsReport && ![_lastDailyWidgetContent isEqual:dailyContent]) {
+        _lastDailyWidgetContent = dailyContent;
+        [self requestNativeDailyWidgetReload];
     }
 }
 
@@ -2330,16 +2348,42 @@ static NSString *QGWidgetProviderModeName(QGDesktopWidgetProviderMode mode) {
         NSString *path = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Contents/Frameworks/libQGWidgetBridge.dylib"];
         static void *bridge = NULL;
         if (!bridge) bridge = dlopen(path.fileSystemRepresentation, RTLD_NOW | RTLD_LOCAL);
-        void (*reload)(void) = bridge ? (void (*)(void))dlsym(bridge, "QGReloadNativeWidgets") : NULL;
+        void (*reload)(void) = bridge ? (void (*)(void))dlsym(bridge, "QGReloadNativeQuotaWidget") : NULL;
         if (reload) {
             reload();
             strongSelf.lastNativeWidgetReload = NSDate.date;
-            NSLog(@"AgentReadout: requested native widget timeline reload");
+            NSLog(@"AgentReadout: requested quota widget timeline reload");
         } else {
             NSLog(@"AgentReadout: native widget reload bridge unavailable");
         }
     }];
     [NSRunLoop.mainRunLoop addTimer:_nativeWidgetReloadTimer forMode:NSRunLoopCommonModes];
+}
+
+- (void)requestNativeDailyWidgetReload {
+    if (!QGNativeWidgetAvailable() || _nativeDailyWidgetReloadTimer.valid) return;
+    NSTimeInterval since = _lastNativeDailyWidgetReload ? -_lastNativeDailyWidgetReload.timeIntervalSinceNow : DBL_MAX;
+    NSTimeInterval delay = MAX(0.5, 3600 - since);
+    __weak QGAppDelegate *weakSelf = self;
+    _nativeDailyWidgetReloadTimer = [NSTimer timerWithTimeInterval:delay repeats:NO block:^(NSTimer *timer) {
+        (void)timer;
+        QGAppDelegate *strongSelf = weakSelf;
+        if (!strongSelf) return;
+        NSString *path = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Contents/Frameworks/libQGWidgetBridge.dylib"];
+        static void *bridge = NULL;
+        if (!bridge) bridge = dlopen(path.fileSystemRepresentation, RTLD_NOW | RTLD_LOCAL);
+        BOOL initialReload = strongSelf.lastNativeDailyWidgetReload == nil;
+        const char *symbol = initialReload ? "QGReloadAllNativeWidgets" : "QGReloadNativeDailyWidget";
+        void (*reload)(void) = bridge ? (void (*)(void))dlsym(bridge, symbol) : NULL;
+        if (reload) {
+            reload();
+            strongSelf.lastNativeDailyWidgetReload = NSDate.date;
+            NSLog(@"AgentReadout: requested %@ widget timeline reload", initialReload ? @"all" : @"daily");
+        } else {
+            NSLog(@"AgentReadout: daily widget reload bridge unavailable");
+        }
+    }];
+    [NSRunLoop.mainRunLoop addTimer:_nativeDailyWidgetReloadTimer forMode:NSRunLoopCommonModes];
 }
 
 - (BOOL)needsClaudeConnectionForProvider:(NSString *)provider {
@@ -2398,14 +2442,21 @@ static NSString *QGWidgetProviderModeName(QGDesktopWidgetProviderMode mode) {
     NSMutableArray<NSString *> *paths = [NSMutableArray array];
     for (NSString *bundleID in @[@"com.openai.codex", @"com.openai.chatgpt"]) {
         NSURL *appURL = [NSWorkspace.sharedWorkspace URLForApplicationWithBundleIdentifier:bundleID];
-        if (appURL) [paths addObject:[[appURL path] stringByAppendingPathComponent:@"Contents/Resources/codex"]];
+        if (appURL) {
+            [paths addObject:[[appURL path] stringByAppendingPathComponent:@"Contents/Resources/codex"]];
+            [paths addObject:[[appURL path] stringByAppendingPathComponent:
+                @"Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"]];
+        }
     }
     NSString *userApplications = [NSHomeDirectory() stringByAppendingPathComponent:@"Applications"];
     [paths addObjectsFromArray:@[
         @"/Applications/Codex.app/Contents/Resources/codex",
         @"/Applications/ChatGPT.app/Contents/Resources/codex",
+        @"/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
         [userApplications stringByAppendingPathComponent:@"Codex.app/Contents/Resources/codex"],
         [userApplications stringByAppendingPathComponent:@"ChatGPT.app/Contents/Resources/codex"],
+        [userApplications stringByAppendingPathComponent:
+            @"ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"],
         @"/opt/homebrew/bin/codex",
         @"/usr/local/bin/codex",
         [NSHomeDirectory() stringByAppendingPathComponent:@".local/bin/codex"],

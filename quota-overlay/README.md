@@ -61,4 +61,4 @@ Installation stops only the extension executable inside this app bundle and re-r
 
     ./install.sh
 
-The installer places the app at `~/Applications/Gauge for Codex.app` and registers the per-user LaunchAgent `com.qingtanlabs.gaugeforcodex`. It opens the app after installation but preserves the login-startup choice; new installations use RunAtLoad=false.
+The installer places the app at `~/Applications/AgentReadout.app`, migrating a single legacy `~/Applications/Gauge for Codex.app` installation, and registers the per-user LaunchAgent `com.qingtanlabs.gaugeforcodex`. It opens the app after installation but preserves the login-startup choice; new installations use RunAtLoad=false.

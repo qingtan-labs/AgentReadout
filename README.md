@@ -27,7 +27,7 @@ cd AgentReadout/quota-overlay
 ./install.sh
 ```
 
-The source installer retains the compatibility path `~/Applications/Gauge for Codex.app`. The new DMG/ZIP contains `AgentReadout.app`; existing auto-updated installations keep their previous path but display the new product name. Login startup is off by default for new installations, and upgrades preserve the existing choice.
+The source installer now installs `~/Applications/AgentReadout.app` and migrates a single legacy `~/Applications/Gauge for Codex.app` installation. The DMG/ZIP also contains `AgentReadout.app`; automatic updates preserve an existing installation path until the source installer migrates it. Login startup is off by default for new installations, and upgrades preserve the existing choice.
 
 ## Sources and privacy
 

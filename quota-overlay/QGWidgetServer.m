@@ -216,6 +216,7 @@ static NSDictionary *QGWidgetSnapshot(NSArray<NSDictionary *> *codexWindows, NST
         @synchronized (self) {
             body = _snapshotData;
         }
+        NSLog(@"AgentReadout: widget snapshot served");
     } else {
         body = [@"{}" dataUsingEncoding:NSUTF8StringEncoding];
     }

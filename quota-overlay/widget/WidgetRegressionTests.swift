@@ -89,12 +89,27 @@ struct WidgetRegressionTests {
               "explicit zero and seven calendar slots are preserved")
         check(daily.recentDays(reference: now).filter { $0.value == nil }.count == 6,
               "unreported days stay unavailable rather than becoming zero")
+        let october12 = Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 12, hour: 9))!
+        let octoberSlots = daily.recentDays(reference: october12)
+        check(octoberSlots.first?.date == "2026-10-06" && octoberSlots.last?.date == "2026-10-12",
+              "Daily Token axis follows the current calendar date, not the source's last bucket")
         snapshot.dailyUsage = daily
         let dailyRoundTrip = try JSONDecoder().decode(QuotaSnapshot.self, from: JSONEncoder().encode(snapshot))
         check(dailyRoundTrip.dailyUsage?.summary["lifetimeTokens"] == 5_390_000_000,
               "daily metrics survive the widget snapshot round trip")
-        check(!daily.isStale(reference: now) && daily.isStale(reference: now.addingTimeInterval(3601)),
+        check(!daily.isStale(reference: now) && daily.isStale(reference: now.addingTimeInterval(3 * 3600 + 1)),
               "daily source freshness is distinct from quota freshness")
+        let dailyTimeline = dailyTokenTimelineEntries(snapshot: snapshot, now: now)
+        check((2...3).contains(dailyTimeline.count), "daily widget schedules only the next midnight and optional stale transition")
+        check(dailyTimeline.map { DailyUsageSnapshot.key(for: $0.date) }.contains {
+            $0 == DailyUsageSnapshot.key(for: Calendar.current.date(byAdding: .day, value: 1, to: now)!)
+        }, "daily widget advances its date window even if system reload is delayed")
+        check(dailyTimeline.last!.date == Calendar.current.startOfDay(for:
+            Calendar.current.date(byAdding: .day, value: 1, to: now)!),
+            "daily widget does not keep a multi-day timeline of old values")
+        let quotaReset = Date(timeIntervalSince1970: snapshot.quota(for: "codex").windows[0].resetsAt)
+        check(!dailyTimeline.contains { $0.date == quotaReset },
+              "daily widget timeline excludes quota reset events")
         var failedDaily = daily
         failedDaily.stale = true
         check(failedDaily.isStale(reference: now), "failed daily refresh remains stale even when previously updated recently")
